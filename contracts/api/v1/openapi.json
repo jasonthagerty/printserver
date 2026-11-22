@@ -448,6 +448,17 @@
               "unknown"
             ],
             "type": "string"
+          },
+          "usb": {
+            "description": "USB check: none in test mode; stale means reconnected, restart the container",
+            "enum": [
+              "connected",
+              "stale",
+              "missing",
+              "unknown",
+              "none"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -459,6 +470,7 @@
           "message",
           "accepting",
           "connected",
+          "usb",
           "queued_jobs",
           "markers"
         ],

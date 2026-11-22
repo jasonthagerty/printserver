@@ -3,8 +3,8 @@
 Prerequisite: [deploy-ap2.md](deploy-ap2.md) works in test mode.
 
 RouterOS 7.20 added `devices=` to pass hardware from `/system/resource/hardware`
-into a container. MikroTik documents it with a serial port only, so the first
-steps are a test: if RouterOS will not pass the printer through, see
+into a container. MikroTik documents it with a serial port only; on AP2
+(RouterOS 7.25.1) it works for the MG3620 as below. If it ever does not, see
 **Fallback** at the end.
 
 ## 1. Plug in and find the printer
@@ -25,16 +25,33 @@ Note the `device-name`.
 
 ```
 /container/stop printserver
-/container/set printserver devices=<device-name>
+/container/set printserver devices=<device-name>:""
 /container/envs/set [find list=printserver key=PRINTSERVER_DEVICE] value=usb
 /container/start printserver
 /log/print follow where topics~"container"
 ```
 
+`devices=` takes pairs of `<router device>:<name in the container>`. The empty
+name keeps the router's path (`/dev/bus/usb/001/NNN`), which is what CUPS and
+SANE look for, and it follows the device number if the printer comes back
+with a new one after a restart. `devices=1-1.3` alone is refused with
+"expected value of container-dev-name".
+
 **Check:** the log shows `init: mode=usb` and
 `cups-queue: MG3620 -> usb://Canon/MG3600%20series?serial=...`. If it says
 "no Canon printer on USB yet", the device did not reach the container (see
-Troubleshooting).
+Troubleshooting). To look from inside:
+
+```
+/container/shell printserver
+ls -l /dev/bus/usb/*/
+lpinfo --include-schemes usb -v
+scanimage -L
+exit
+```
+
+`ls` lists one device node, `lpinfo` prints the `usb://Canon/...` URI, and
+`scanimage -L` lists a `pixma:` device.
 
 ## 3. Test
 
@@ -53,11 +70,20 @@ reach it.
 
 ## Troubleshooting
 
-- **The printer was unplugged or switched off and on.** RouterOS may give it a
-  new device number, which the running container does not see. Restart the
-  container: `/container/stop printserver`, then `/container/start printserver`.
-  The home screen shows "The printer is off or unplugged" until then. Jobs
+The home screen tells these apart (the server compares the USB bus with the
+container's device nodes): "off or unplugged" or "reconnected ... restart".
+
+- **The printer was unplugged, power-cycled, or replugged into the same
+  port.** RouterOS gives it a new device number (`001/005` becomes `001/006`),
+  and the running container does not get the new node. Restart the container:
+  `/container/stop printserver`, then `/container/start printserver`. Jobs
   already queued wait and print after the restart.
+- **The printer moved to another USB port.** The device name is the port
+  (`1-1.3`, `1-1.2`, ...), so `devices=` must change too. Find the new name
+  with `/system/resource/hardware/print where vendor-id="0x04a9"`, then
+  `/container/stop printserver`,
+  `/container/set printserver devices=<new name>:""`,
+  `/container/start printserver`. Keep it on one port to avoid this.
 - **Nothing in `/system/resource/hardware`.** Try another USB port or cable.
   Some PIXMAs only appear while switched on.
 - **The container sees no device.** In the container log, look for the

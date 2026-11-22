@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -20,6 +21,7 @@ import (
 	"github.com/jasonthagerty/printserver/internal/escl/escltest"
 	"github.com/jasonthagerty/printserver/internal/scans"
 	"github.com/jasonthagerty/printserver/internal/settings"
+	"github.com/jasonthagerty/printserver/internal/usbprobe"
 )
 
 type harness struct {
@@ -336,5 +338,35 @@ func TestSPAFallback(t *testing.T) {
 	}
 	if rec := h.do(http.MethodGet, "/assets/missing.js", nil, nil); rec.Code != http.StatusNotFound {
 		t.Errorf("missing asset = %d", rec.Code)
+	}
+}
+
+func TestStatusReportsUSBState(t *testing.T) {
+	h := newHarness(t)
+	root := t.TempDir()
+	h.deps.USB = &usbprobe.Probe{Vendor: "04a9", SysRoot: filepath.Join(root, "sys"), DevRoot: filepath.Join(root, "dev")}
+	h.handler = NewRouter(h.deps)
+	var st StatusOutput
+
+	// No sysfs at all: nothing to say.
+	h.json(http.MethodGet, "/api/v1/status", nil, http.StatusOK, &st.Body)
+	if st.Body.Printer.USB != "unknown" || !st.Body.Printer.Connected {
+		t.Errorf("unknown: %+v", st.Body.Printer)
+	}
+
+	// The printer is on the bus, but the container has no node for it.
+	dev := filepath.Join(root, "sys", "bus", "usb", "devices", "1-1.2")
+	if err := os.MkdirAll(dev, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for f, v := range map[string]string{"idVendor": "04a9", "busnum": "1", "devnum": "6"} {
+		if err := os.WriteFile(filepath.Join(dev, f), []byte(v), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	h.json(http.MethodGet, "/api/v1/status", nil, http.StatusOK, &st.Body)
+	p := st.Body.Printer
+	if p.USB != "stale" || p.Connected || len(p.Reasons) != 1 || p.Reasons[0].Code != "usb-reconnected" {
+		t.Errorf("stale: %+v", p)
 	}
 }

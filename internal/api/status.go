@@ -11,6 +11,7 @@ import (
 
 	"github.com/jasonthagerty/printserver/internal/cups"
 	"github.com/jasonthagerty/printserver/internal/escl"
+	"github.com/jasonthagerty/printserver/internal/usbprobe"
 )
 
 // Reason is one printer condition, in words a person can act on.
@@ -37,6 +38,7 @@ type PrinterStatus struct {
 	Message    string   `json:"message"`
 	Accepting  bool     `json:"accepting"`
 	Connected  bool     `json:"connected" doc:"false when the printer is off, unplugged or unreachable"`
+	USB        string   `json:"usb" enum:"connected,stale,missing,unknown,none" doc:"USB check: none in test mode; stale means reconnected, restart the container"`
 	QueuedJobs int      `json:"queued_jobs"`
 	Markers    []Marker `json:"markers"`
 }
@@ -87,6 +89,7 @@ func registerStatus(api huma.API, deps Deps) {
 			out.Body.PrinterError = "The print service is not answering."
 		} else {
 			ps := printerStatus(p)
+			applyUSB(&ps, deps.USB)
 			out.Body.Printer = &ps
 		}
 		out.Body.Scanner = scannerStatus(ctx, deps.Scanner)
@@ -113,6 +116,27 @@ func registerStatus(api huma.API, deps Deps) {
 		}
 		return out, nil
 	})
+}
+
+// applyUSB overrides what CUPS says with what the USB bus says: CUPS only
+// notices a missing printer when a job fails.
+func applyUSB(ps *PrinterStatus, probe *usbprobe.Probe) {
+	if probe == nil {
+		ps.USB = "none"
+		return
+	}
+	state, _ := probe.Check()
+	ps.USB = string(state)
+	switch state {
+	case usbprobe.Missing:
+		ps.Connected = false
+		ps.Reasons = append(ps.Reasons, Reason{Code: "usb-missing", Severity: "error",
+			Text: "The printer is off or unplugged. Turn it on and check the USB cable."})
+	case usbprobe.Stale:
+		ps.Connected = false
+		ps.Reasons = append(ps.Reasons, Reason{Code: "usb-reconnected", Severity: "error",
+			Text: "The printer was reconnected, and the print server can't see it until it restarts. On the router: /container/stop printserver, then /container/start printserver."})
+	}
 }
 
 func scannerStatus(ctx context.Context, sc *escl.Client) ScannerStatus {

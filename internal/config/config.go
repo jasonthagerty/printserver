@@ -26,6 +26,8 @@ type Config struct {
 	AvahiDir   string // where the AirScan mDNS record is written
 	// ScannerName is what scanning apps list.
 	ScannerName string
+	// USBVendor is the printer's USB vendor ID, for the connection check.
+	USBVendor string
 }
 
 // FromEnv reads the configuration.
@@ -42,6 +44,7 @@ func FromEnv() (Config, error) {
 		ESCLListen: os.Getenv("PRINTSERVER_ESCL_LISTEN"),
 		AvahiDir:   env("PRINTSERVER_AVAHI_SERVICES", "/etc/avahi/services"),
 	}
+	c.USBVendor = env("PRINTSERVER_USB_VENDOR", "04a9") // Canon
 	c.ScannerName = env("PRINTSERVER_SCANNER_NAME", env("PRINTSERVER_PRINTER_INFO", "Canon MG3620")+" Scanner")
 	for _, h := range strings.Split(os.Getenv("PRINTSERVER_ALLOWED_HOSTS"), ",") {
 		if h = strings.TrimSpace(h); h != "" {

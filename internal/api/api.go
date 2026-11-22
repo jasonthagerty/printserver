@@ -33,6 +33,7 @@ import (
 	"github.com/jasonthagerty/printserver/internal/escl"
 	"github.com/jasonthagerty/printserver/internal/scans"
 	"github.com/jasonthagerty/printserver/internal/settings"
+	"github.com/jasonthagerty/printserver/internal/usbprobe"
 	"github.com/jasonthagerty/printserver/web"
 )
 
@@ -55,6 +56,8 @@ type Deps struct {
 	Hostname string
 	// ExtraHosts are more names accepted in the Host header.
 	ExtraHosts []string
+	// USB checks the printer's USB connection; nil in test mode.
+	USB *usbprobe.Probe
 }
 
 // App is the running server.
@@ -84,7 +87,12 @@ func NewApp(ctx context.Context, cfg config.Config, log *slog.Logger, version st
 	if err != nil {
 		return nil, err
 	}
+	var usb *usbprobe.Probe
+	if cfg.Device == "usb" {
+		usb = &usbprobe.Probe{Vendor: cfg.USBVendor, SysRoot: "/sys", DevRoot: "/dev"}
+	}
 	deps := Deps{
+		USB:        usb,
 		Version:    version,
 		Device:     cfg.Device,
 		CUPS:       cc,

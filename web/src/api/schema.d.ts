@@ -451,6 +451,11 @@ export interface components {
       reasons: components["schemas"]["Reason"][];
       /** @enum {string} */
       state: "idle" | "processing" | "stopped" | "unknown";
+      /**
+       * @description USB check: none in test mode; stale means reconnected, restart the container
+       * @enum {string}
+       */
+      usb: "connected" | "stale" | "missing" | "unknown" | "none";
     };
     Reason: {
       /** @description IPP printer-state-reasons keyword, without its severity suffix */
