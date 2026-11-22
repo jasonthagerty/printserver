@@ -1,0 +1,18 @@
+#!/command/with-contenv sh
+i=0
+while [ ! -S /run/avahi-daemon/socket ] && [ "$i" -lt 100 ]; do
+  sleep 0.1
+  i=$((i + 1))
+done
+# Loopback only: AirSane has no Host-header check, so the Go server proxies
+# :8090 to it with one, and announces the scanner on the network itself.
+# AirSane still announces (it serves only scanners it has announced), but
+# with --interface=lo that record never leaves the container.
+exec airsaned \
+  --interface=lo \
+  --listen-port=18090 \
+  --local-scanners-only=true \
+  --network-hotplug=false \
+  --web-interface=false \
+  --disclose-version=false \
+  --job-timeout=120

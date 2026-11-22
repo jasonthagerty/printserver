@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@theme {
+  /* System fonts only: the GUI loads nothing from outside the server. */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+:root {
+  color-scheme: light dark;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  @apply bg-slate-50 antialiased dark:bg-slate-950;
+}

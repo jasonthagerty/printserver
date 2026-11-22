@@ -1,0 +1,61 @@
+#!/command/with-contenv sh
+# Prepares /data and per-mode configuration before any service starts.
+set -eu
+
+DATA="${PRINTSERVER_DATA:-/data}"
+mkdir -p "$DATA/cups/ppd" "$DATA/cups/ssl" "$DATA/scans" "$DATA/test-output" \
+  /run/dbus /run/cups /run/avahi-daemon
+chown root:lp "$DATA/cups" "$DATA/cups/ppd"
+chmod 0755 "$DATA/cups" "$DATA/cups/ppd"
+chown root:lp "$DATA/cups/ssl"
+chmod 0700 "$DATA/cups/ssl"
+chown lp:lp "$DATA/test-output"
+chown avahi:avahi /run/avahi-daemon
+
+# One SANE backend per mode, so a network scanner is never picked up by accident.
+case "${PRINTSERVER_DEVICE:-}" in
+  test)
+    echo test >/etc/sane.d/dll.conf
+    # One simulated color scanner with a test pattern.
+    sed -i -e 's/^number_of_devices .*/number_of_devices 1/' \
+      -e 's/^mode .*/mode Color/' \
+      -e 's/^test-picture .*/test-picture "Color pattern"/' /etc/sane.d/test.conf
+    ;;
+  usb)
+    echo pixma >/etc/sane.d/dll.conf
+    # USB only: never pick up a Canon on the network (BJNP).
+    grep -q '^networking=no' /etc/sane.d/pixma.conf 2>/dev/null || echo 'networking=no' >>/etc/sane.d/pixma.conf
+    ;;
+  *)
+    echo "init: PRINTSERVER_DEVICE must be test or usb, got '${PRINTSERVER_DEVICE:-}'" >&2
+    exit 1
+    ;;
+esac
+# Other packages may drop backends into dll.d; only the one above is wanted.
+rm -f /etc/sane.d/dll.d/*
+
+host="${PRINTSERVER_HOSTNAME:-printserver}"
+case "$host" in
+  *[!A-Za-z0-9-]* | -* | "")
+    echo "init: PRINTSERVER_HOSTNAME must be letters, digits and hyphens, got '$host'" >&2
+    exit 1
+    ;;
+esac
+sed -i "s/^host-name=.*/host-name=$host/" /etc/avahi/avahi-daemon.conf
+sed -i -e "s/^ServerName .*/ServerName $host.local/" -e '/^ServerAlias /d' /etc/cups/cupsd.conf
+# Extra DNS names (PRINTSERVER_ALLOWED_HOSTS) are accepted by cupsd too.
+for alias in $(echo "${PRINTSERVER_ALLOWED_HOSTS:-}" | tr ',' ' '); do
+  case "$alias" in
+    *[!A-Za-z0-9.-]*)
+      echo "init: ignoring invalid host name '$alias' in PRINTSERVER_ALLOWED_HOSTS" >&2
+      ;;
+    *) sed -i "/^ServerName /a ServerAlias $alias" /etc/cups/cupsd.conf ;;
+  esac
+done
+# The Go server writes the AirScan mDNS record here (see internal/airscan).
+mkdir -p /etc/avahi/services
+rm -f /etc/avahi/services/airscan.service
+
+dbus-uuidgen --ensure
+rm -f /run/dbus/pid /run/avahi-daemon/pid
+echo "init: mode=${PRINTSERVER_DEVICE} host=$host.local data=$DATA"

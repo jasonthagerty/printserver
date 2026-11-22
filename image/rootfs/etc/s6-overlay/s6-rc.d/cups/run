@@ -1,0 +1,2 @@
+#!/command/with-contenv sh
+exec cupsd -f -c /etc/cups/cupsd.conf -s /etc/cups/cups-files.conf

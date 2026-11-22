@@ -1,0 +1,44 @@
+#!/command/with-contenv sh
+# Creates or updates the print queue. Safe to run on every start: lpadmin -m
+# re-copies the driver's PPD, so a driver upgrade in the image takes effect.
+set -eu
+
+i=0
+# lpstat -r exits 0 either way; only its text says whether cupsd is up.
+until lpstat -r 2>/dev/null | grep -q 'is running'; do
+  i=$((i + 1))
+  # Generous: a router's first boot from a USB drive is slow.
+  if [ "$i" -gt 600 ]; then
+    echo "cups-queue: cupsd did not start within 2 minutes" >&2
+    exit 1
+  fi
+  sleep 0.2
+done
+
+queue="${PRINTSERVER_QUEUE:-MG3620}"
+case "$PRINTSERVER_DEVICE" in
+  test)
+    uri="file:///data/test-output/last-job.prn"
+    ;;
+  usb)
+    uri="$(lpinfo --include-schemes usb -v 2>/dev/null | awk '$2 ~ /^usb:\/\/Canon\// { print $2; exit }')"
+    if [ -z "$uri" ]; then
+      # The usb backend matches make and model, and holds jobs until the
+      # printer appears.
+      uri="usb://Canon/MG3600%20series"
+      echo "cups-queue: no Canon printer on USB yet; jobs will wait for it" >&2
+    fi
+    ;;
+esac
+
+lpadmin -p "$queue" -E -v "$uri" \
+  -m "${PRINTSERVER_PPD:-gutenprint.5.3://bjc-PIXMA-MG3620/expert}" \
+  -D "${PRINTSERVER_PRINTER_INFO:-Canon MG3620}" \
+  -L "${PRINTSERVER_LOCATION:-}" \
+  -o printer-is-shared=true \
+  -o PageSize="${PRINTSERVER_PAGE_SIZE:-Letter}" \
+  -o printer-error-policy=abort-job
+lpadmin -d "$queue"
+cupsenable "$queue"
+cupsaccept "$queue"
+echo "cups-queue: $queue -> $uri"

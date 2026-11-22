@@ -1,0 +1,7 @@
+.omc/
+/local/
+*.tar
+*.tar.gz
+node_modules/
+dist/
+.env

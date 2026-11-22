@@ -1,0 +1,7 @@
+.git
+.omc
+local
+web/node_modules
+web/dist
+printserver
+*.tar

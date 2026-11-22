@@ -1,0 +1,34 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/jasonthagerty/printserver
+
+linters:
+  default: none
+  enable:
+    - bodyclose
+    - errcheck
+    - errorlint
+    - govet
+    - ineffassign
+    - misspell
+    - nilerr
+    - noctx
+    - sloglint
+    - staticcheck
+    - unconvert
+    - unused
+    - usetesting
+  exclusions:
+    # Unchecked Close/Remove on cleanup paths, the usual exceptions.
+    presets:
+      - std-error-handling

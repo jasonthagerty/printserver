@@ -1,0 +1,145 @@
+name: Image
+
+# Builds the container image on a native runner per architecture (AirSane is
+# C++ and slow under emulation), smoke-tests it, and on main or a tag pushes
+# it to GitHub's container registry. Tags also get a release with the arm64
+# image as a tar for /container/add file= on the router.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - id: version
+        run: echo "version=$(git describe --tags --always)" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build for the smoke test
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/${{ matrix.arch }}
+          build-args: VERSION=${{ steps.version.outputs.version }}
+          load: true
+          tags: printserver:ci
+          provenance: false
+          sbom: false
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
+      - name: Smoke test
+        run: test/smoke/run.sh printserver:ci
+
+      - name: Save the arm64 image for the router
+        if: matrix.arch == 'arm64' && startsWith(github.ref, 'refs/tags/')
+        run: |
+          docker tag printserver:ci "printserver:${{ steps.version.outputs.version }}"
+          docker save "printserver:${{ steps.version.outputs.version }}" -o printserver-arm64.tar
+      - uses: actions/upload-artifact@v4
+        if: matrix.arch == 'arm64' && startsWith(github.ref, 'refs/tags/')
+        with:
+          name: printserver-arm64.tar
+          path: printserver-arm64.tar
+          retention-days: 7
+
+      - uses: docker/login-action@v3
+        if: github.event_name == 'push'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push by digest
+        id: push
+        if: github.event_name == 'push'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/${{ matrix.arch }}
+          build-args: VERSION=${{ steps.version.outputs.version }}
+          # RouterOS reads plain image manifests; attestation entries in the
+          # index are not something to test on a router.
+          provenance: false
+          sbom: false
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ matrix.arch }}
+      - name: Record digest
+        if: github.event_name == 'push'
+        run: |
+          mkdir -p /tmp/digests
+          touch "/tmp/digests/${DIGEST#sha256:}"
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'push'
+        with:
+          name: digest-${{ matrix.arch }}
+          path: /tmp/digests/*
+          retention-days: 1
+
+  publish:
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: digest-*
+          path: /tmp/digests
+          merge-multiple: true
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,format=short
+            type=semver,pattern={{version}}
+      - name: Create the multi-arch manifest
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf "$IMAGE@sha256:%s " *)
+      - run: docker buildx imagetools inspect "$IMAGE:${{ steps.meta.outputs.version }}"
+
+      - uses: actions/download-artifact@v4
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          name: printserver-arm64.tar
+      - name: Release with the router tarball
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" printserver-arm64.tar --repo "$GITHUB_REPOSITORY" --generate-notes

@@ -1,0 +1,1753 @@
+{
+  "components": {
+    "schemas": {
+      "CopySettings": {
+        "additionalProperties": false,
+        "properties": {
+          "color": {
+            "default": "color",
+            "enum": [
+              "color",
+              "monochrome"
+            ],
+            "type": "string"
+          },
+          "copies": {
+            "default": 1,
+            "format": "int64",
+            "maximum": 99,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "copies",
+          "color"
+        ],
+        "type": "object"
+      },
+      "Delivery": {
+        "additionalProperties": false,
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "destination": {
+            "enum": [
+              "nextcloud"
+            ],
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "destination",
+          "path",
+          "at"
+        ],
+        "type": "object"
+      },
+      "ErrorDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "location": {
+            "description": "Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id'",
+            "type": "string"
+          },
+          "message": {
+            "description": "Error message text",
+            "type": "string"
+          },
+          "value": {
+            "description": "The value at the given location"
+          }
+        },
+        "type": "object"
+      },
+      "ErrorModel": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "description": "A human-readable explanation specific to this occurrence of the problem.",
+            "examples": [
+              "Property foo is required but is missing."
+            ],
+            "type": "string"
+          },
+          "errors": {
+            "description": "Optional list of individual error details",
+            "items": {
+              "$ref": "#/components/schemas/ErrorDetail"
+            },
+            "type": "array"
+          },
+          "instance": {
+            "description": "A URI reference that identifies the specific occurrence of the problem.",
+            "examples": [
+              "https://example.com/error-log/abc123"
+            ],
+            "format": "uri",
+            "type": "string"
+          },
+          "status": {
+            "description": "HTTP status code",
+            "examples": [
+              400
+            ],
+            "format": "int64",
+            "type": "integer"
+          },
+          "title": {
+            "description": "A short, human-readable summary of the problem type. This value should not change between occurrences of the error.",
+            "examples": [
+              "Bad Request"
+            ],
+            "type": "string"
+          },
+          "type": {
+            "default": "about:blank",
+            "description": "A URI reference to human-readable documentation for the error.",
+            "examples": [
+              "https://example.com/errors/example"
+            ],
+            "format": "uri",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "HealthOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "cups": {
+            "type": "boolean"
+          },
+          "scanner": {
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "degraded"
+            ],
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "cups",
+          "scanner",
+          "version"
+        ],
+        "type": "object"
+      },
+      "Job": {
+        "additionalProperties": false,
+        "properties": {
+          "cancelable": {
+            "type": "boolean"
+          },
+          "completed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "pages": {
+            "description": "sheets printed so far",
+            "format": "int64",
+            "type": "integer"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "state": {
+            "enum": [
+              "pending",
+              "held",
+              "processing",
+              "stopped",
+              "canceled",
+              "aborted",
+              "completed",
+              "unknown"
+            ],
+            "type": "string"
+          },
+          "user": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "user",
+          "state",
+          "reasons",
+          "message",
+          "created_at",
+          "completed_at",
+          "pages",
+          "cancelable"
+        ],
+        "type": "object"
+      },
+      "JobsOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "active": {
+            "items": {
+              "$ref": "#/components/schemas/Job"
+            },
+            "type": "array"
+          },
+          "recent": {
+            "description": "finished jobs, newest first",
+            "items": {
+              "$ref": "#/components/schemas/Job"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "active",
+          "recent"
+        ],
+        "type": "object"
+      },
+      "Marker": {
+        "additionalProperties": false,
+        "properties": {
+          "color": {
+            "description": "#RRGGBB, or empty when unknown",
+            "type": "string"
+          },
+          "level": {
+            "description": "percent; -1 when the printer does not report it",
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "color",
+          "level"
+        ],
+        "type": "object"
+      },
+      "NextcloudInput": {
+        "additionalProperties": false,
+        "properties": {
+          "clear_password": {
+            "description": "forget the saved password",
+            "type": "boolean"
+          },
+          "folder": {
+            "maxLength": 300,
+            "type": "string"
+          },
+          "password": {
+            "description": "app password; empty keeps the saved one",
+            "maxLength": 500,
+            "type": "string"
+          },
+          "url": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "user": {
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "user",
+          "folder"
+        ],
+        "type": "object"
+      },
+      "NextcloudView": {
+        "additionalProperties": false,
+        "properties": {
+          "configured": {
+            "type": "boolean"
+          },
+          "folder": {
+            "type": "string"
+          },
+          "password_set": {
+            "type": "boolean"
+          },
+          "url": {
+            "type": "string"
+          },
+          "user": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "user",
+          "folder",
+          "password_set",
+          "configured"
+        ],
+        "type": "object"
+      },
+      "Option": {
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "label"
+        ],
+        "type": "object"
+      },
+      "PrintOptionsOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "accept": {
+            "description": "file types the server can print",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "color_modes": {
+            "items": {
+              "$ref": "#/components/schemas/Option"
+            },
+            "type": "array"
+          },
+          "media": {
+            "items": {
+              "$ref": "#/components/schemas/Option"
+            },
+            "type": "array"
+          },
+          "media_default": {
+            "type": "string"
+          },
+          "qualities": {
+            "items": {
+              "$ref": "#/components/schemas/Option"
+            },
+            "type": "array"
+          },
+          "sides": {
+            "items": {
+              "$ref": "#/components/schemas/Option"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "media",
+          "media_default",
+          "sides",
+          "color_modes",
+          "qualities",
+          "accept"
+        ],
+        "type": "object"
+      },
+      "PrintOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "PrinterStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "accepting": {
+            "type": "boolean"
+          },
+          "connected": {
+            "description": "false when the printer is off, unplugged or unreachable",
+            "type": "boolean"
+          },
+          "info": {
+            "type": "string"
+          },
+          "markers": {
+            "items": {
+              "$ref": "#/components/schemas/Marker"
+            },
+            "type": "array"
+          },
+          "message": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "queued_jobs": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/Reason"
+            },
+            "type": "array"
+          },
+          "state": {
+            "enum": [
+              "idle",
+              "processing",
+              "stopped",
+              "unknown"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "info",
+          "model",
+          "state",
+          "reasons",
+          "message",
+          "accepting",
+          "connected",
+          "queued_jobs",
+          "markers"
+        ],
+        "type": "object"
+      },
+      "Reason": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "description": "IPP printer-state-reasons keyword, without its severity suffix",
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "error",
+              "warning",
+              "report"
+            ],
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "severity",
+          "text"
+        ],
+        "type": "object"
+      },
+      "RenameInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "ScanDoc": {
+        "additionalProperties": false,
+        "properties": {
+          "bytes": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "color": {
+            "enum": [
+              "color",
+              "gray"
+            ],
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "deliveries": {
+            "items": {
+              "$ref": "#/components/schemas/Delivery"
+            },
+            "type": "array"
+          },
+          "file_name": {
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "pdf",
+              "jpeg"
+            ],
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "pages": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "resolution": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "created_at",
+          "updated_at",
+          "format",
+          "color",
+          "resolution",
+          "pages",
+          "bytes",
+          "file_name",
+          "deliveries"
+        ],
+        "type": "object"
+      },
+      "ScanRequestBody": {
+        "additionalProperties": false,
+        "properties": {
+          "color": {
+            "default": "color",
+            "enum": [
+              "color",
+              "gray"
+            ],
+            "type": "string"
+          },
+          "format": {
+            "default": "pdf",
+            "enum": [
+              "pdf",
+              "jpeg"
+            ],
+            "type": "string"
+          },
+          "resolution": {
+            "default": 300,
+            "format": "int64",
+            "maximum": 600,
+            "minimum": 75,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "resolution",
+          "color",
+          "format"
+        ],
+        "type": "object"
+      },
+      "ScannerOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "colors": {
+            "description": "subset of color, gray",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "formats": {
+            "description": "subset of pdf, jpeg",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "model": {
+            "type": "string"
+          },
+          "resolutions": {
+            "description": "dpi values offered, ascending",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "available",
+          "model",
+          "resolutions",
+          "colors",
+          "formats"
+        ],
+        "type": "object"
+      },
+      "ScannerStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "model": {
+            "type": "string"
+          },
+          "state": {
+            "description": "eSCL state: Idle, Processing, Testing, Stopped, Down; empty when unavailable",
+            "type": "string"
+          }
+        },
+        "required": [
+          "available",
+          "state",
+          "model"
+        ],
+        "type": "object"
+      },
+      "ScansOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "scans": {
+            "description": "newest first",
+            "items": {
+              "$ref": "#/components/schemas/ScanDoc"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "scans"
+        ],
+        "type": "object"
+      },
+      "SendInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "destination": {
+            "enum": [
+              "nextcloud"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "destination"
+        ],
+        "type": "object"
+      },
+      "SendOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "description": "where the file was stored at the destination",
+            "type": "string"
+          },
+          "scan": {
+            "$ref": "#/components/schemas/ScanDoc"
+          }
+        },
+        "required": [
+          "path",
+          "scan"
+        ],
+        "type": "object"
+      },
+      "SettingsInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "nextcloud": {
+            "$ref": "#/components/schemas/NextcloudInput"
+          },
+          "retention_days": {
+            "format": "int64",
+            "maximum": 3650,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "retention_days",
+          "nextcloud"
+        ],
+        "type": "object"
+      },
+      "SettingsOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "nextcloud": {
+            "$ref": "#/components/schemas/NextcloudView"
+          },
+          "retention_days": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "retention_days",
+          "nextcloud"
+        ],
+        "type": "object"
+      },
+      "StatusOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "mode": {
+            "description": "test: a simulated printer and scanner",
+            "enum": [
+              "test",
+              "usb"
+            ],
+            "type": "string"
+          },
+          "printer": {
+            "$ref": "#/components/schemas/PrinterStatus",
+            "description": "null when the print service is not answering"
+          },
+          "printer_error": {
+            "type": "string"
+          },
+          "scanner": {
+            "$ref": "#/components/schemas/ScannerStatus"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "printer",
+          "scanner",
+          "mode",
+          "version"
+        ],
+        "type": "object"
+      },
+      "TestNextcloudInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "nextcloud": {
+            "$ref": "#/components/schemas/NextcloudInput"
+          }
+        },
+        "required": [
+          "nextcloud"
+        ],
+        "type": "object"
+      },
+      "TestOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "message"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "printserver API",
+    "version": "dev"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/copy": {
+      "post": {
+        "description": "Blocks until the page is scanned and queued.",
+        "operationId": "copy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CopySettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrintOutputBody"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Copy: scan the glass and print it",
+        "tags": [
+          "Scanning"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "get-health",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Server health",
+        "tags": [
+          "Status"
+        ]
+      }
+    },
+    "/jobs": {
+      "get": {
+        "operationId": "list-jobs",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobsOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Print queue and recent jobs",
+        "tags": [
+          "Printing"
+        ]
+      },
+      "post": {
+        "operationId": "print",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "encoding": {
+                "color": {
+                  "contentType": "text/plain"
+                },
+                "copies": {
+                  "contentType": "text/plain"
+                },
+                "file": {
+                  "contentType": "application/octet-stream"
+                },
+                "media": {
+                  "contentType": "text/plain"
+                },
+                "pages": {
+                  "contentType": "text/plain"
+                },
+                "quality": {
+                  "contentType": "text/plain"
+                },
+                "scaling": {
+                  "contentType": "text/plain"
+                },
+                "sides": {
+                  "contentType": "text/plain"
+                }
+              },
+              "schema": {
+                "properties": {
+                  "color": {
+                    "default": "color",
+                    "enum": [
+                      "color",
+                      "monochrome"
+                    ],
+                    "type": "string"
+                  },
+                  "copies": {
+                    "default": 1,
+                    "format": "int64",
+                    "maximum": 99,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "file": {
+                    "contentEncoding": "binary",
+                    "contentMediaType": "application/octet-stream",
+                    "description": "PDF, JPEG, PNG or plain text",
+                    "format": "binary",
+                    "type": "string"
+                  },
+                  "media": {
+                    "description": "media keyword; empty uses the printer default",
+                    "maxLength": 80,
+                    "type": "string"
+                  },
+                  "pages": {
+                    "description": "page ranges such as 1-3,5; empty prints all",
+                    "maxLength": 100,
+                    "type": "string"
+                  },
+                  "quality": {
+                    "default": "normal",
+                    "enum": [
+                      "draft",
+                      "normal",
+                      "high"
+                    ],
+                    "type": "string"
+                  },
+                  "scaling": {
+                    "default": "auto",
+                    "enum": [
+                      "auto",
+                      "fit",
+                      "fill",
+                      "none"
+                    ],
+                    "type": "string"
+                  },
+                  "sides": {
+                    "default": "one-sided",
+                    "enum": [
+                      "one-sided",
+                      "two-sided-long-edge",
+                      "two-sided-short-edge"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file"
+                ],
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrintOutputBody"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Print an uploaded file",
+        "tags": [
+          "Printing"
+        ]
+      }
+    },
+    "/jobs/{id}": {
+      "delete": {
+        "operationId": "cancel-job",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Cancel a print job",
+        "tags": [
+          "Printing"
+        ]
+      }
+    },
+    "/print-options": {
+      "get": {
+        "operationId": "get-print-options",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrintOptionsOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Settings the printer supports",
+        "tags": [
+          "Printing"
+        ]
+      }
+    },
+    "/scanner": {
+      "get": {
+        "operationId": "get-scanner",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScannerOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Scanner capabilities",
+        "tags": [
+          "Scanning"
+        ]
+      }
+    },
+    "/scans": {
+      "get": {
+        "operationId": "list-scans",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScansOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Recent scans",
+        "tags": [
+          "Scanning"
+        ]
+      },
+      "post": {
+        "description": "Blocks until the page is scanned, which can take up to a minute.",
+        "operationId": "create-scan",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanDoc"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Scan a page into a new document",
+        "tags": [
+          "Scanning"
+        ]
+      }
+    },
+    "/scans/{id}": {
+      "delete": {
+        "operationId": "delete-scan",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[0-9]{8}-[0-9]{6}-[0-9a-f]{6}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Delete a scan",
+        "tags": [
+          "Scanning"
+        ]
+      },
+      "patch": {
+        "operationId": "rename-scan",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[0-9]{8}-[0-9]{6}-[0-9a-f]{6}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanDoc"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Rename a scan",
+        "tags": [
+          "Scanning"
+        ]
+      }
+    },
+    "/scans/{id}/file": {
+      "get": {
+        "operationId": "get-scan-file",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[0-9]{8}-[0-9]{6}-[0-9a-f]{6}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "send as an attachment instead of for viewing",
+            "explode": false,
+            "in": "query",
+            "name": "download",
+            "schema": {
+              "description": "send as an attachment instead of for viewing",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {},
+              "image/jpeg": {}
+            },
+            "description": "The document"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Download a scan as PDF or JPEG",
+        "tags": [
+          "Scanning"
+        ]
+      }
+    },
+    "/scans/{id}/pages": {
+      "post": {
+        "operationId": "add-scan-page",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[0-9]{8}-[0-9]{6}-[0-9a-f]{6}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanDoc"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Scan another page onto a PDF",
+        "tags": [
+          "Scanning"
+        ]
+      }
+    },
+    "/scans/{id}/pages/{page}": {
+      "delete": {
+        "operationId": "delete-scan-page",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[0-9]{8}-[0-9]{6}-[0-9a-f]{6}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "page",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanDoc"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Remove a page",
+        "tags": [
+          "Scanning"
+        ]
+      },
+      "get": {
+        "operationId": "get-scan-page",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[0-9]{8}-[0-9]{6}-[0-9a-f]{6}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "page",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/jpeg": {}
+            },
+            "description": "The page"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "A page's image (JPEG)",
+        "tags": [
+          "Scanning"
+        ]
+      }
+    },
+    "/scans/{id}/print": {
+      "post": {
+        "operationId": "print-scan",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[0-9]{8}-[0-9]{6}-[0-9a-f]{6}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CopySettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrintOutputBody"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Print a scan",
+        "tags": [
+          "Scanning"
+        ]
+      }
+    },
+    "/scans/{id}/send": {
+      "post": {
+        "operationId": "send-scan",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[0-9]{8}-[0-9]{6}-[0-9a-f]{6}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Send a scan to Nextcloud",
+        "tags": [
+          "Scanning"
+        ]
+      }
+    },
+    "/settings": {
+      "get": {
+        "operationId": "get-settings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Settings",
+        "tags": [
+          "Settings"
+        ]
+      },
+      "put": {
+        "operationId": "update-settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Change settings",
+        "tags": [
+          "Settings"
+        ]
+      }
+    },
+    "/settings/nextcloud/test": {
+      "post": {
+        "description": "Tests the given values, using the saved password when none is given. Saves nothing.",
+        "operationId": "test-nextcloud",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestNextcloudInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Test a Nextcloud connection",
+        "tags": [
+          "Settings"
+        ]
+      }
+    },
+    "/status": {
+      "get": {
+        "operationId": "get-status",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Printer and scanner status",
+        "tags": [
+          "Status"
+        ]
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ]
+}
