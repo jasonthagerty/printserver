@@ -62,7 +62,21 @@ exit
 - Check ink levels on the home screen. Gutenprint often reports none over USB;
   the screen then shows no gauges rather than made-up ones.
 
-## 4. Turn off the printer's Wi-Fi
+## 4. Let the printer turn itself on
+
+Enable the MG3620's **Auto Power On**: hold Stop until the Alarm lamp flashes
+14 times, then press Color (check the manual's "Turning on/off Machine
+Automatically" if that sequence does not take). Then turn the printer off
+with its power button whenever you like: switched off that way, it stays on
+the USB bus with the same device number, so the container keeps working, and
+the next job wakes it.
+
+Tested on AP2: with the printer off, a print from an iPhone woke it and
+printed. Avoid switching it off at the wall or with a smart plug: that skips
+capping the print head, and the printer likely comes back with a new USB device
+number, which needs a container restart.
+
+## 5. Turn off the printer's Wi-Fi
 
 On the printer: Setup, LAN settings, Wireless LAN, Disable. This takes it off
 the network, so it no longer needs Wi-Fi or an address, and nothing else can
