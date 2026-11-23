@@ -16,7 +16,7 @@ Built for a Canon PIXMA MG3620 on a MikroTik hAP be³ Media (arm64, RouterOS
 | CUPS + Gutenprint | The print queue and the MG3620 driver. Shared over IPP, so iPhones (AirPrint), Android (Mopria), Macs and Windows print natively. |
 | SANE + [AirSane](https://github.com/SimulPiscator/AirSane) | The scanner, as eSCL (AirScan) for Image Capture, Preview, iPhones and Windows. AirSane listens on loopback only; the Go server serves port 8090 for it. |
 | Avahi | Announces the printer and scanner on the network (mDNS). The Go server writes both records, so their "webpage" links point at the web UI rather than CUPS's or AirSane's. |
-| `printserver` (Go) | The web UI and its JSON API on port 80: print uploads, the queue, scanning (multi-page PDF), copying, sending scans to Nextcloud, and cartridge ages with a test page reminder (ink dries in a printer that sits). Also the eSCL proxy on port 8090 and its mDNS record. |
+| `printserver` (Go) | The web UI and its JSON API on port 80: print uploads, the queue, scanning (multi-page PDF), copying, sending scans to Nextcloud, cartridge ages and ink levels with a test page reminder (ink dries in a printer that sits), and Canon's nozzle check and print head cleaning. Also the eSCL proxy on port 8090 and its mDNS record. |
 | s6-overlay | Starts and supervises the above. |
 
 The web UI talks to CUPS over its local socket and to the scanner through
@@ -26,8 +26,9 @@ collide.
 ## Modes
 
 - `PRINTSERVER_DEVICE=test` (the default): the queue uses the real MG3620
-  driver but writes to `/data/test-output/`, and the scanner is SANE's test
-  device. For development and for the first deployment.
+  driver but a test backend writes each job to `/data/test-output/` as the
+  printer would receive it, and the scanner is SANE's test device. For
+  development and for the first deployment.
 - `PRINTSERVER_DEVICE=usb`: the printer and scanner on USB.
 
 ## Deploying

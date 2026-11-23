@@ -341,6 +341,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/supplies/maintenance": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Nozzle check or print head cleaning
+     * @description Sends Canon's maintenance command to the printer as a raw job. Canon printers only.
+     */
+    post: operations["run-maintenance"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/supplies/test-page": {
     parameters: {
       query?: never;
@@ -471,9 +491,16 @@ export interface components {
     };
     HealthOutputBody: {
       cups: boolean;
+      /** @description what makes it unhealthy */
+      problems: string[];
       scanner: boolean;
+      /**
+       * @description unhealthy only when restarting the container would fix it
+       * @enum {string}
+       */
+      status: "ok" | "unhealthy";
       /** @enum {string} */
-      status: "ok" | "degraded";
+      usb: "connected" | "stale" | "missing" | "unknown" | "none";
       version: string;
     };
     Job: {
@@ -508,6 +535,13 @@ export interface components {
       active: components["schemas"]["Job"][];
       /** @description finished jobs, newest first */
       recent: components["schemas"]["Job"][];
+    };
+    MaintenanceInputBody: {
+      /**
+       * @description nozzle-check prints Canon's check pattern (one sheet); cleaning cleans the print head (uses some ink)
+       * @enum {string}
+       */
+      action: "nozzle-check" | "cleaning";
     };
     Marker: {
       /** @description #RRGGBB, or empty when unknown */
@@ -1499,6 +1533,39 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["SuppliesOutputBody"];
+        };
+      };
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["ErrorModel"];
+        };
+      };
+    };
+  };
+  "run-maintenance": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["MaintenanceInputBody"];
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PrintOutputBody"];
         };
       };
       /** @description Error */

@@ -18,6 +18,7 @@ internal/scans/         scanned documents on disk; PDF assembly from JPEG pages
 internal/settings/      settings.json
 internal/supplies/      cartridge ages, last print, the test page (supplies.json)
 internal/usbprobe/      is the USB printer present, and visible to the container
+internal/canon/         Canon maintenance jobs (nozzle check, head cleaning) as raw bytes
 internal/airprint/      the printer's mDNS record (in place of CUPS's)
 internal/avahi/         Avahi service files
 internal/destinations/  Nextcloud WebDAV upload

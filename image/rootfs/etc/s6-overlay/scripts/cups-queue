@@ -18,7 +18,7 @@ done
 queue="${PRINTSERVER_QUEUE:-MG3620}"
 case "$PRINTSERVER_DEVICE" in
   test)
-    uri="file:///data/test-output/last-job.prn"
+    uri="testfile:/"
     ;;
   usb)
     uri="$(lpinfo --include-schemes usb -v 2>/dev/null | awk '$2 ~ /^usb:\/\/Canon\// { print $2; exit }')"

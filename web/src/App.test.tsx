@@ -143,6 +143,8 @@ function mockAPI() {
         body: init?.body ? JSON.parse(String(init.body)) : undefined,
       });
       if (method === "DELETE") return new Response(null, { status: 204 });
+      if (method === "POST" && path === "/supplies/maintenance")
+        return new Response(JSON.stringify({ id: 10 }), { status: 201 });
       if (method === "POST" && path === "/supplies/test-page")
         return new Response(JSON.stringify({ id: 9 }), { status: 201 });
       const body = routes[`${method} ${path}`];
@@ -270,4 +272,25 @@ test("home shows cartridge ages, the idle reminder, and prints a test page", asy
     path: "/supplies/test-page",
     body: undefined,
   });
+});
+
+test("maintenance buttons confirm before sending", async () => {
+  const calls = mockAPI();
+  const confirmSpy = vi.spyOn(window, "confirm");
+  renderAt("/");
+  const clean = await screen.findByRole("button", { name: "Clean print head" });
+
+  confirmSpy.mockReturnValueOnce(false);
+  await userEvent.click(clean);
+  expect(calls.some((c) => c.path === "/supplies/maintenance")).toBe(false);
+
+  confirmSpy.mockReturnValueOnce(true);
+  await userEvent.click(clean);
+  expect(await screen.findByText(/Cleaning started/)).toBeInTheDocument();
+  expect(calls).toContainEqual({
+    method: "POST",
+    path: "/supplies/maintenance",
+    body: { action: "cleaning" },
+  });
+  confirmSpy.mockRestore();
 });

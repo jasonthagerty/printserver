@@ -458,3 +458,23 @@ func TestSuppliesShowInkReading(t *testing.T) {
 		t.Errorf("black %+v, color %+v", black, color)
 	}
 }
+
+func TestMaintenanceSendsARawCanonJob(t *testing.T) {
+	h := newHarness(t)
+	var out PrintOutput
+	h.json(http.MethodPost, "/api/v1/supplies/maintenance", map[string]string{"action": "nozzle-check"}, http.StatusCreated, &out.Body)
+	h.json(http.MethodPost, "/api/v1/supplies/maintenance", map[string]string{"action": "cleaning"}, http.StatusCreated, &out.Body)
+	h.json(http.MethodPost, "/api/v1/supplies/maintenance", map[string]string{"action": "deep-clean"}, http.StatusUnprocessableEntity, nil)
+	jobs := h.cups.Received()
+	if len(jobs) != 2 {
+		t.Fatalf("%d jobs", len(jobs))
+	}
+	for i, want := range []string{"@TestPrint=NozzleCheck", "@Cleaning=1ALL"} {
+		if jobs[i].Format != "application/vnd.cups-raw" || !bytes.Contains(jobs[i].Data, []byte(want)) {
+			t.Errorf("job %d: format %s, has %q: %v", i, jobs[i].Format, want, bytes.Contains(jobs[i].Data, []byte(want)))
+		}
+	}
+	if jobs[1].Name != "Print head cleaning" {
+		t.Errorf("job name %q", jobs[1].Name)
+	}
+}

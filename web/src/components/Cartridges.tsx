@@ -57,7 +57,80 @@ export function Cartridges() {
           <p className="mt-2 text-sm text-rose-600">{testPage.error.message}</p>
         )}
       </div>
+      <PrintHead />
     </Card>
+  );
+}
+
+// Canon's own maintenance: the nozzle check shows which inks are streaky,
+// and cleaning is the fix. Cleaning uses ink, so it is not the first thing
+// to try.
+function PrintHead() {
+  const qc = useQueryClient();
+  const [sent, setSent] = useState("");
+  const run = useMutation({
+    mutationFn: api.maintenance,
+    onSuccess: (_, action) => {
+      setSent(
+        action === "nozzle-check"
+          ? "Nozzle check sent. Every line in the pattern should be unbroken; if some are missing, clean the print head."
+          : "Cleaning started. It takes about a minute; don't open the printer until the ON lamp stops flashing.",
+      );
+      void qc.invalidateQueries({ queryKey: ["jobs"] });
+    },
+  });
+  const confirmAndRun = (
+    action: "nozzle-check" | "cleaning",
+    question: string,
+  ) => {
+    if (confirm(question)) {
+      setSent("");
+      run.mutate(action);
+    }
+  };
+  return (
+    <div className="mt-5 border-t border-slate-100 pt-4 dark:border-slate-800">
+      <p className="mb-3 text-sm text-slate-600 dark:text-slate-300">
+        Faded or streaky prints? Print a nozzle check first, and clean the print
+        head only if the pattern has gaps.
+      </p>
+      <div className="grid grid-cols-2 gap-3">
+        <Button
+          className="min-h-11 text-sm"
+          busy={run.isPending && run.variables === "nozzle-check"}
+          disabled={run.isPending}
+          onClick={() =>
+            confirmAndRun(
+              "nozzle-check",
+              "Print Canon's nozzle check pattern? It uses one sheet of paper.",
+            )
+          }
+        >
+          Nozzle check
+        </Button>
+        <Button
+          className="min-h-11 text-sm"
+          busy={run.isPending && run.variables === "cleaning"}
+          disabled={run.isPending}
+          onClick={() =>
+            confirmAndRun(
+              "cleaning",
+              "Clean the print head? It uses some ink from both cartridges and takes about a minute.",
+            )
+          }
+        >
+          Clean print head
+        </Button>
+      </div>
+      {sent && (
+        <p className="mt-3 text-sm font-medium text-emerald-700 dark:text-emerald-300">
+          {sent}
+        </p>
+      )}
+      {run.error && (
+        <p className="mt-2 text-sm text-rose-600">{run.error.message}</p>
+      )}
+    </div>
   );
 }
 

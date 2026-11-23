@@ -191,6 +191,7 @@ func register(api huma.API, deps Deps) {
 	registerScans(api, deps)
 	registerSettings(api, deps)
 	registerSupplies(api, deps)
+	registerMaintenance(api, deps)
 }
 
 func cleanupLoop(ctx context.Context, deps Deps) {

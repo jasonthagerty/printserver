@@ -90,6 +90,12 @@ tp=$(curl -sf -X POST $B/supplies/test-page | jq -r .id)
 [ -n "$tp" ] && [ "$tp" != null ] || fail "test page"
 pass "printed the test page (job $tp)"
 
+# Last, so its bytes are what the queue writes out: it must reach the
+# printer unfiltered.
+mj=$(curl -sf -X POST -H "Content-Type: application/json" -d "{\"action\":\"nozzle-check\"}" $B/supplies/maintenance | jq -r .id)
+[ -n "$mj" ] && [ "$mj" != null ] || fail "maintenance job"
+pass "sent the nozzle check (job $mj)"
+
 i=0
 while :; do
   left=$(curl -sf $B/jobs | jq ".active | length")
@@ -126,6 +132,10 @@ code=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: print.example.com:631" h
 pass "cross-site and DNS-rebinding requests refused (web UI, eSCL, CUPS)"
 '
 docker exec "$name" sh -c 'test -s /data/test-output/last-job.prn' || { echo "FAIL: no printer output" >&2; exit 1; }
+docker exec "$name" grep -q "BJLSTART" /data/test-output/last-job.prn &&
+  docker exec "$name" grep -q "@TestPrint=NozzleCheck" /data/test-output/last-job.prn ||
+  { echo "FAIL: the maintenance job did not reach the printer unfiltered" >&2; exit 1; }
+echo "ok   maintenance job reached the printer byte for byte"
 out="$(docker exec "$name" printserver healthcheck)" || { echo "FAIL: healthcheck: $out" >&2; exit 1; }
 echo "ok   healthcheck: $out"
 echo "ok   printer output written by the MG3620 driver"

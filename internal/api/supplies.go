@@ -5,10 +5,12 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 
+	"github.com/jasonthagerty/printserver/internal/canon"
 	"github.com/jasonthagerty/printserver/internal/cups"
 	"github.com/jasonthagerty/printserver/internal/supplies"
 )
@@ -50,6 +52,13 @@ type CartridgeDateInput struct {
 // CartridgeIDInput selects a cartridge.
 type CartridgeIDInput struct {
 	ID string `path:"id" enum:"black,color"`
+}
+
+// MaintenanceInput runs a print head maintenance job.
+type MaintenanceInput struct {
+	Body struct {
+		Action string `json:"action" enum:"nozzle-check,cleaning" doc:"nozzle-check prints Canon's check pattern (one sheet); cleaning cleans the print head (uses some ink)"`
+	}
 }
 
 // ThresholdsInput changes the warning age and reminder.
@@ -129,6 +138,44 @@ func registerSupplies(api huma.API, deps Deps) {
 		if err != nil {
 			return nil, cupsError(deps, err)
 		}
+		out := &PrintOutput{}
+		out.Body.ID = id
+		return out, nil
+	})
+}
+
+func registerMaintenance(api huma.API, deps Deps) {
+	huma.Register(api, huma.Operation{
+		OperationID:   "run-maintenance",
+		Method:        http.MethodPost,
+		Path:          "/supplies/maintenance",
+		Summary:       "Nozzle check or print head cleaning",
+		Description:   "Sends Canon's maintenance command to the printer as a raw job. Canon printers only.",
+		Tags:          []string{"Supplies"},
+		DefaultStatus: http.StatusCreated,
+	}, func(ctx context.Context, in *MaintenanceInput) (*PrintOutput, error) {
+		p, err := deps.CUPS.Printer(ctx)
+		if err != nil {
+			return nil, cupsError(deps, err)
+		}
+		if !strings.Contains(strings.ToLower(p.MakeAndModel), "canon") {
+			return nil, huma.Error409Conflict("maintenance commands are only known for Canon printers")
+		}
+		job, err := canon.Job(canon.Action(in.Body.Action), time.Now())
+		if err != nil {
+			return nil, huma.Error422UnprocessableEntity(err.Error())
+		}
+		name := "Nozzle check"
+		if in.Body.Action == string(canon.Cleaning) {
+			name = "Print head cleaning"
+		}
+		id, err := deps.CUPS.Print(ctx, bytes.NewReader(job), cups.PrintOptions{
+			Name: name, Format: "application/vnd.cups-raw",
+		})
+		if err != nil {
+			return nil, cupsError(deps, err)
+		}
+		deps.Log.Info("maintenance job", "action", in.Body.Action, "job", id)
 		out := &PrintOutput{}
 		out.Body.ID = id
 		return out, nil

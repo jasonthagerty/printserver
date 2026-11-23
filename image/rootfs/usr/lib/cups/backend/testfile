@@ -1,0 +1,19 @@
+#!/bin/sh
+# CUPS backend for test mode: writes each job to /data/test-output/last-job.prn
+# exactly as a real backend would send it to the printer. Unlike a file:
+# device it receives raw jobs too (CUPS passes those as the job file).
+#   backend                  -> list the device
+#   backend job user title copies options [file]
+if [ $# -eq 0 ]; then
+  echo 'direct testfile "Test" "Test file (printserver test mode)"'
+  exit 0
+fi
+out=/data/test-output/last-job.prn
+if [ -n "$6" ]; then
+  cat "$6" >"$out.tmp"
+else
+  cat >"$out.tmp"
+fi || exit 1
+mv "$out.tmp" "$out"
+echo "INFO: wrote $(wc -c <"$out") bytes to $out" >&2
+exit 0

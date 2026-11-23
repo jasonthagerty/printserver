@@ -104,6 +104,8 @@ export const api = {
       nudge_days,
     }),
   printTestPage: () => request<{ id: number }>("POST", "/supplies/test-page"),
+  maintenance: (action: "nozzle-check" | "cleaning") =>
+    request<{ id: number }>("POST", "/supplies/maintenance", { action }),
   testNextcloud: (n: NextcloudInput) =>
     request<TestResult>("POST", "/settings/nextcloud/test", { nextcloud: n }),
 };
