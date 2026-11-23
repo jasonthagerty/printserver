@@ -56,6 +56,13 @@ func (s *Server) Received() []Job {
 	return out
 }
 
+// SetLevels replaces marker-levels (Black, Color).
+func (s *Server) SetLevels(levels ...int) {
+	s.mu.Lock()
+	s.MarkerLevels = levels
+	s.mu.Unlock()
+}
+
 // SetReasons replaces printer-state-reasons.
 func (s *Server) SetReasons(r ...string) {
 	s.mu.Lock()
@@ -110,6 +117,7 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request) {
 		p.Add(goipp.MakeAttribute("queued-job-count", goipp.TagInteger, goipp.Integer(s.active())))
 		p.Add(goipp.MakeAttr("marker-names", goipp.TagName, goipp.String("Black"), goipp.String("Color")))
 		p.Add(goipp.MakeAttr("marker-colors", goipp.TagName, goipp.String("#000000"), goipp.String("#00FFFF#FF00FF#FFFF00")))
+		p.Add(goipp.MakeAttr("marker-low-levels", goipp.TagInteger, goipp.Integer(15), goipp.Integer(15)))
 		levels := goipp.Attribute{Name: "marker-levels"}
 		for _, l := range s.MarkerLevels {
 			levels.Values.Add(goipp.TagInteger, goipp.Integer(l))

@@ -38,7 +38,41 @@ type State struct {
 	NudgeDays   int        `json:"nudge_days"`
 	LastPrinted *time.Time `json:"last_printed,omitempty"`
 	LastJobID   int        `json:"last_job_id,omitempty"`
+	// Ink is the last good reading from the printer, if it is polled.
+	Ink *InkReading `json:"ink,omitempty"`
 }
+
+// InkReading is one successful poll of the printer's ink levels.
+type InkReading struct {
+	CheckedAt time.Time `json:"checked_at"`
+	Levels    []Level   `json:"levels"`
+}
+
+// Level is one cartridge's reported level.
+type Level struct {
+	Cartridge string `json:"cartridge"` // Cartridge.ID
+	Color     string `json:"color"`
+	Level     int    `json:"level"` // percent; -1 unknown
+	Low       int    `json:"low"`   // percent the printer calls low; -1 unknown
+}
+
+// Level returns the reading for cartridge id, if any.
+func (r *InkReading) Level(id string) (Level, bool) {
+	if r == nil {
+		return Level{}, false
+	}
+	for _, l := range r.Levels {
+		if l.Cartridge == id {
+			return l, true
+		}
+	}
+	return Level{}, false
+}
+
+// refillJump is how far a level must rise between readings to count as a
+// new cartridge. Levels only fall in use; a refill estimate can wobble by a
+// few points, a new cartridge jumps by much more.
+const refillJump = 25
 
 // Defaults are the MG3620's two cartridges and the default thresholds.
 func Defaults() State {
@@ -94,7 +128,7 @@ func Open(path string) (*Store, error) {
 	if st.NudgeDays >= 0 {
 		s.cur.NudgeDays = st.NudgeDays
 	}
-	s.cur.LastPrinted, s.cur.LastJobID = st.LastPrinted, st.LastJobID
+	s.cur.LastPrinted, s.cur.LastJobID, s.cur.Ink = st.LastPrinted, st.LastJobID, st.Ink
 	return s, nil
 }
 
@@ -108,6 +142,11 @@ func (s *Store) Get() State {
 func (s *Store) copyLocked() State {
 	st := s.cur
 	st.Cartridges = append([]Cartridge(nil), s.cur.Cartridges...)
+	if s.cur.Ink != nil {
+		ink := *s.cur.Ink
+		ink.Levels = append([]Level(nil), s.cur.Ink.Levels...)
+		st.Ink = &ink
+	}
 	return st
 }
 
@@ -170,6 +209,31 @@ func (s *Store) RecordPrint(jobID int, at time.Time) (bool, error) {
 }
 
 var errUnchanged = errors.New("unchanged")
+
+// RecordInk stores a reading. A cartridge whose level jumped up since the
+// last reading was replaced, so its install date becomes today. It returns
+// the IDs of cartridges it marked replaced.
+func (s *Store) RecordInk(at time.Time, levels []Level) ([]string, error) {
+	var replaced []string
+	today := s.Today()
+	_, err := s.update(func(st *State) error {
+		for _, l := range levels {
+			prev, ok := st.Ink.Level(l.Cartridge)
+			if !ok || prev.Level < 0 || l.Level < 0 || l.Level-prev.Level < refillJump {
+				continue
+			}
+			for i := range st.Cartridges {
+				if st.Cartridges[i].ID == l.Cartridge && st.Cartridges[i].InstalledOn != today {
+					st.Cartridges[i].InstalledOn = today
+					replaced = append(replaced, l.Cartridge)
+				}
+			}
+		}
+		st.Ink = &InkReading{CheckedAt: at.UTC(), Levels: append([]Level(nil), levels...)}
+		return nil
+	})
+	return replaced, err
+}
 
 func (s *Store) update(f func(*State) error) (State, error) {
 	s.mu.Lock()

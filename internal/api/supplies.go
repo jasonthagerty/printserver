@@ -21,6 +21,9 @@ type CartridgeView struct {
 	InstalledOn string `json:"installed_on" doc:"YYYY-MM-DD; empty when not recorded"`
 	AgeDays     int    `json:"age_days" doc:"-1 when the install date is not recorded"`
 	Old         bool   `json:"old" doc:"older than warn_months: the ink may be drying out"`
+	Level       int    `json:"level" doc:"ink percent from the last reading; -1 when unknown"`
+	Low         bool   `json:"low" doc:"at or below the printer's own low-ink level"`
+	Color       string `json:"color" doc:"#RRGGBB as the printer reports it, possibly several; empty when unknown"`
 }
 
 // SuppliesOutput is cartridge ages and printer use.
@@ -32,6 +35,7 @@ type SuppliesOutput struct {
 		LastPrinted *time.Time      `json:"last_printed" doc:"null until a print has been recorded"`
 		IdleDays    int             `json:"idle_days" doc:"days since the last print; -1 when unknown"`
 		Nudge       bool            `json:"nudge" doc:"suggest a test page: no print for nudge_days"`
+		InkChecked  *time.Time      `json:"ink_checked" doc:"when ink levels were last read; null when never"`
 	}
 }
 
@@ -137,11 +141,21 @@ func suppliesOutput(s *supplies.Store, st supplies.State) *SuppliesOutput {
 	b.WarnMonths, b.NudgeDays, b.LastPrinted = st.WarnMonths, st.NudgeDays, st.LastPrinted
 	b.Cartridges = make([]CartridgeView, 0, len(st.Cartridges))
 	for _, c := range st.Cartridges {
-		b.Cartridges = append(b.Cartridges, CartridgeView{
+		v := CartridgeView{
 			ID: c.ID, Name: c.Name, Model: c.Model, InstalledOn: c.InstalledOn,
 			AgeDays: s.AgeDays(c.InstalledOn),
 			Old:     c.InstalledOn != "" && s.Old(c.InstalledOn, st.WarnMonths),
-		})
+			Level:   -1,
+		}
+		if l, ok := st.Ink.Level(c.ID); ok {
+			v.Level, v.Color = l.Level, l.Color
+			v.Low = l.Level >= 0 && l.Low >= 0 && l.Level <= l.Low
+		}
+		b.Cartridges = append(b.Cartridges, v)
+	}
+	if st.Ink != nil {
+		t := st.Ink.CheckedAt
+		b.InkChecked = &t
 	}
 	b.IdleDays = -1
 	if st.LastPrinted != nil {

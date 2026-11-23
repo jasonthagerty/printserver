@@ -101,6 +101,9 @@ function mockAPI() {
           installed_on: "2026-01-02",
           age_days: 220,
           old: true,
+          level: 12,
+          low: true,
+          color: "#101010",
         },
         {
           id: "color",
@@ -109,6 +112,9 @@ function mockAPI() {
           installed_on: "",
           age_days: -1,
           old: false,
+          level: -1,
+          low: false,
+          color: "",
         },
       ],
       warn_months: 6,
@@ -116,6 +122,7 @@ function mockAPI() {
       last_printed: "2026-10-01T12:00:00Z",
       idle_days: 30,
       nudge: true,
+      ink_checked: new Date().toISOString(),
     },
     "GET /scanner": {
       available: true,
@@ -250,6 +257,9 @@ test("home shows cartridge ages, the idle reminder, and prints a test page", asy
     await screen.findByText(/over 6 months: it may be drying out/),
   ).toBeInTheDocument();
   expect(screen.getByText("Install date not set")).toBeInTheDocument();
+  expect(screen.getByText("Low: get a replacement")).toBeInTheDocument();
+  expect(screen.getByText("12%")).toBeInTheDocument();
+  expect(screen.getByText(/checked just now/)).toBeInTheDocument();
   expect(screen.getByText("Last printed 30 days ago.")).toBeInTheDocument();
   await userEvent.click(
     screen.getByRole("button", { name: "Print a test page" }),

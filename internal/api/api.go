@@ -117,6 +117,9 @@ func NewApp(ctx context.Context, cfg config.Config, log *slog.Logger, version st
 	}
 	go cleanupLoop(ctx, deps)
 	go sup.Watch(ctx, cc, time.Minute, log)
+	if cfg.InkURI != "" {
+		go sup.PollInk(ctx, cfg.InkURI, cfg.InkInterval, log)
+	}
 	return &App{deps: deps}, nil
 }
 

@@ -173,3 +173,19 @@ func TestRecentJobsAreTheNewest(t *testing.T) {
 		t.Fatalf("recent = %v, want 12 down to 3", ids)
 	}
 }
+
+func TestPrinterMarkers(t *testing.T) {
+	srv := cupstest.New()
+	defer srv.Close()
+	uri := strings.Replace(srv.URL, "http://", "ipp://", 1) + "/ipp/print"
+	m, err := cups.PrinterMarkers(context.Background(), nil, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(m) != 2 || m[0].Name != "Black" || m[0].Level != 40 || m[0].Low != 15 || m[1].Level != 75 {
+		t.Errorf("markers = %+v", m)
+	}
+	if _, err := cups.PrinterMarkers(context.Background(), nil, "ftp://x/"); err == nil {
+		t.Error("accepted ftp")
+	}
+}

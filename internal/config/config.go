@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 )
 
 // Config is the process configuration.
@@ -36,6 +37,10 @@ type Config struct {
 	// AnnouncePrinter publishes the AirPrint record (in the image, where
 	// CUPS's own publishing is off).
 	AnnouncePrinter bool
+	// InkURI, if set, is the printer's own IPP address (over its Wi-Fi),
+	// polled every InkInterval for ink levels. Printing stays on USB.
+	InkURI      string
+	InkInterval time.Duration
 }
 
 // FromEnv reads the configuration.
@@ -54,6 +59,15 @@ func FromEnv() (Config, error) {
 	}
 	c.USBVendor = env("PRINTSERVER_USB_VENDOR", "04a9") // Canon
 	c.AnnouncePrinter = os.Getenv("PRINTSERVER_ANNOUNCE_PRINTER") == "1"
+	c.InkURI = os.Getenv("PRINTSERVER_INK_URI")
+	c.InkInterval = 6 * time.Hour
+	if v := os.Getenv("PRINTSERVER_INK_INTERVAL"); v != "" {
+		d, err := time.ParseDuration(v)
+		if err != nil || d < time.Minute {
+			return Config{}, fmt.Errorf("PRINTSERVER_INK_INTERVAL must be a duration of at least 1m, like 6h, got %q", v)
+		}
+		c.InkInterval = d
+	}
 	c.PublicURL = env("PRINTSERVER_PUBLIC_URL", "http://"+c.Hostname+".local/")
 	pu, err := url.Parse(c.PublicURL)
 	if err != nil || (pu.Scheme != "http" && pu.Scheme != "https") || pu.Hostname() == "" {

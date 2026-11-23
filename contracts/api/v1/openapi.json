@@ -23,12 +23,25 @@
             "format": "int64",
             "type": "integer"
           },
+          "color": {
+            "description": "#RRGGBB as the printer reports it, possibly several; empty when unknown",
+            "type": "string"
+          },
           "id": {
             "type": "string"
           },
           "installed_on": {
             "description": "YYYY-MM-DD; empty when not recorded",
             "type": "string"
+          },
+          "level": {
+            "description": "ink percent from the last reading; -1 when unknown",
+            "format": "int64",
+            "type": "integer"
+          },
+          "low": {
+            "description": "at or below the printer's own low-ink level",
+            "type": "boolean"
           },
           "model": {
             "type": "string"
@@ -47,7 +60,10 @@
           "model",
           "installed_on",
           "age_days",
-          "old"
+          "old",
+          "level",
+          "low",
+          "color"
         ],
         "type": "object"
       },
@@ -866,6 +882,14 @@
             "format": "int64",
             "type": "integer"
           },
+          "ink_checked": {
+            "description": "when ink levels were last read; null when never",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "last_printed": {
             "description": "null until a print has been recorded",
             "format": "date-time",
@@ -894,7 +918,8 @@
           "nudge_days",
           "last_printed",
           "idle_days",
-          "nudge"
+          "nudge",
+          "ink_checked"
         ],
         "type": "object"
       },

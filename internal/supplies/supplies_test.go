@@ -117,3 +117,35 @@ func TestTestPageIsAValidPDF(t *testing.T) {
 		}
 	}
 }
+
+func TestInkReadingDetectsReplacement(t *testing.T) {
+	now := time.Date(2026, 11, 23, 12, 0, 0, 0, time.Local)
+	s, path := newStore(t, now)
+	if _, err := s.SetInstalled("color", "2026-03-01"); err != nil {
+		t.Fatal(err)
+	}
+	if r, err := s.RecordInk(now, []Level{{Cartridge: "black", Level: 80, Low: 15}, {Cartridge: "color", Level: 12, Low: 15}}); err != nil || len(r) != 0 {
+		t.Fatalf("first reading: %v %v", r, err)
+	}
+	// Black wobbles up a little; color jumps: a new cartridge.
+	r, err := s.RecordInk(now.Add(6*time.Hour), []Level{{Cartridge: "black", Level: 83, Low: 15}, {Cartridge: "color", Level: 100, Low: 15}})
+	if err != nil || len(r) != 1 || r[0] != "color" {
+		t.Fatalf("replaced = %v (%v), want [color]", r, err)
+	}
+	again, _ := Open(path)
+	got := again.Get()
+	if got.Cartridges[1].InstalledOn != "2026-11-23" || got.Cartridges[0].InstalledOn != "" {
+		t.Errorf("cartridges = %+v", got.Cartridges)
+	}
+	if l, ok := got.Ink.Level("color"); !ok || l.Level != 100 || !got.Ink.CheckedAt.Equal(now.Add(6*time.Hour).UTC()) {
+		t.Errorf("reading = %+v", got.Ink)
+	}
+}
+
+func TestCartridgeNames(t *testing.T) {
+	for name, want := range map[string]string{"Black": "black", "PGBK": "black", "Color": "color", "Tri-Color": "color", "Cyan": ""} {
+		if got := cartridgeFor(name); got != want {
+			t.Errorf("%q -> %q, want %q", name, got, want)
+		}
+	}
+}

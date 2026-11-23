@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { api, type Supplies } from "../api/client";
 import { useSupplies } from "../queries";
-import { Banner, Button, Card, SectionTitle, cx } from "./ui";
+import { Banner, Button, Card, SectionTitle, cx, timeAgo } from "./ui";
 
 // Cartridge ages and how long the printer has sat unused: on an inkjet
 // that prints rarely, both predict dried-out ink better than ink levels.
@@ -24,6 +24,11 @@ export function Cartridges() {
           <CartridgeRow key={c.id} cartridge={c} warnMonths={s.warn_months} />
         ))}
       </ul>
+      {s.ink_checked && (
+        <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+          Ink levels from the printer, checked {timeAgo(s.ink_checked)}.
+        </p>
+      )}
       <div className="mt-5 border-t border-slate-100 pt-4 dark:border-slate-800">
         <p className="text-slate-600 dark:text-slate-300">{lastPrinted(s)}</p>
         {s.nudge && (
@@ -70,6 +75,54 @@ function age(days: number) {
   const months = Math.round(days / 30.4);
   if (months < 18) return `Installed ${months} months ago`;
   return `Installed ${(days / 365).toFixed(1)} years ago`;
+}
+
+function LevelBar({
+  level,
+  low,
+  color,
+}: {
+  level: number;
+  low: boolean;
+  color: string;
+}) {
+  // Tri-color cartridges report one color per ink (#39D2E7#D945DD#DFD31D).
+  const colors = color.match(/#[0-9a-fA-F]{6}/g) ?? ["#64748b"];
+  const bg =
+    colors.length > 1
+      ? `linear-gradient(90deg, ${colors.join(", ")})`
+      : colors[0];
+  return (
+    <div className="mt-2">
+      <div className="flex justify-between text-sm">
+        <span
+          className={cx(
+            low
+              ? "font-semibold text-rose-700 dark:text-rose-300"
+              : "text-slate-500 dark:text-slate-400",
+          )}
+        >
+          {low ? "Low: get a replacement" : "Ink level"}
+        </span>
+        <span className="text-slate-500 tabular-nums dark:text-slate-400">
+          {level}%
+        </span>
+      </div>
+      <div
+        className="mt-1 h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
+        role="meter"
+        aria-valuenow={level}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label="Ink level"
+      >
+        <div
+          className="h-full rounded-full"
+          style={{ width: `${level}%`, background: bg }}
+        />
+      </div>
+    </div>
+  );
 }
 
 function CartridgeRow({
@@ -126,6 +179,9 @@ function CartridgeRow({
             {age(c.age_days)}
             {c.old && ` · over ${warnMonths} months: it may be drying out`}
           </p>
+          {c.level >= 0 && (
+            <LevelBar level={c.level} low={c.low} color={c.color} />
+          )}
         </div>
         <button
           type="button"

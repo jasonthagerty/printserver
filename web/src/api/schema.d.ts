@@ -392,9 +392,18 @@ export interface components {
        * @description -1 when the install date is not recorded
        */
       age_days: number;
+      /** @description #RRGGBB as the printer reports it, possibly several; empty when unknown */
+      color: string;
       id: string;
       /** @description YYYY-MM-DD; empty when not recorded */
       installed_on: string;
+      /**
+       * Format: int64
+       * @description ink percent from the last reading; -1 when unknown
+       */
+      level: number;
+      /** @description at or below the printer's own low-ink level */
+      low: boolean;
       model: string;
       name: string;
       /** @description older than warn_months: the ink may be drying out */
@@ -670,6 +679,11 @@ export interface components {
        * @description days since the last print; -1 when unknown
        */
       idle_days: number;
+      /**
+       * Format: date-time
+       * @description when ink levels were last read; null when never
+       */
+      ink_checked: string | null;
       /**
        * Format: date-time
        * @description null until a print has been recorded

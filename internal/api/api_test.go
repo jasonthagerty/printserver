@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -415,5 +416,31 @@ func TestSupplies(t *testing.T) {
 	jobs := h.cups.Received()
 	if len(jobs) != 1 || jobs[0].Format != "application/pdf" || !bytes.HasPrefix(jobs[0].Data, []byte("%PDF-")) {
 		t.Errorf("test page job = %+v", jobs)
+	}
+}
+
+func TestSuppliesShowInkReading(t *testing.T) {
+	h := newHarness(t)
+	h.cups.SetLevels(10, 90)
+	uri := strings.Replace(h.cups.URL, "http://", "ipp://", 1) + "/ipp/print"
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	go h.deps.Supplies.PollInk(ctx, uri, time.Hour, h.deps.Log)
+
+	var out SuppliesOutput
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		h.json(http.MethodGet, "/api/v1/supplies", nil, http.StatusOK, &out.Body)
+		if out.Body.InkChecked != nil || time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if out.Body.InkChecked == nil {
+		t.Fatal("no ink reading")
+	}
+	black, color := out.Body.Cartridges[0], out.Body.Cartridges[1]
+	if black.Level != 10 || !black.Low || color.Level != 90 || color.Low {
+		t.Errorf("black %+v, color %+v", black, color)
 	}
 }

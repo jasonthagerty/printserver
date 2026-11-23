@@ -34,6 +34,7 @@ collide.
 
 - [Deploy to AP2](docs/runbooks/deploy-ap2.md) (test mode first)
 - [Switch to the USB printer](docs/runbooks/usb-printer.md)
+- [Ink levels over the printer's Wi-Fi](docs/runbooks/ink-over-wifi.md) (optional)
 - [Printing from the Work and Guest networks](docs/runbooks/work-and-guest-printing.md) (optional)
 
 Images are published to `ghcr.io/jasonthagerty/printserver` for `linux/amd64`
@@ -52,6 +53,8 @@ RouterOS's `/container/add file=`.
 | `PRINTSERVER_PPD` | `gutenprint.5.3://bjc-PIXMA-MG3620/expert` | Driver for another printer |
 | `PRINTSERVER_PAGE_SIZE` | `Letter` | Default paper |
 | `PRINTSERVER_PUBLIC_URL` | `http://printserver.local/` | The web UI's address: linked as the printer's and scanner's webpage, shown in Settings, and accepted by the Host checks |
+| `PRINTSERVER_INK_URI` | empty | The printer's own IPP address over Wi-Fi, polled for ink levels (see [the runbook](docs/runbooks/ink-over-wifi.md)); printing stays on USB |
+| `PRINTSERVER_INK_INTERVAL` | `6h` | How often to read ink levels |
 | `PRINTSERVER_ALLOWED_HOSTS` | empty | More DNS names for the web UI, scanner and CUPS, comma-separated |
 | `PRINTSERVER_SCANNER_NAME` | `<printer info> Scanner` | Name scanning apps show |
 
