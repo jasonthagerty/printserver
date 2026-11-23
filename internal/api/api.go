@@ -33,6 +33,7 @@ import (
 	"github.com/jasonthagerty/printserver/internal/escl"
 	"github.com/jasonthagerty/printserver/internal/scans"
 	"github.com/jasonthagerty/printserver/internal/settings"
+	"github.com/jasonthagerty/printserver/internal/supplies"
 	"github.com/jasonthagerty/printserver/internal/usbprobe"
 	"github.com/jasonthagerty/printserver/web"
 )
@@ -60,6 +61,7 @@ type Deps struct {
 	USB *usbprobe.Probe
 	// PublicURL is the web UI's address, shown to users.
 	PublicURL string
+	Supplies  *supplies.Store
 }
 
 // App is the running server.
@@ -85,6 +87,10 @@ func NewApp(ctx context.Context, cfg config.Config, log *slog.Logger, version st
 	if err != nil {
 		return nil, err
 	}
+	sup, err := supplies.Open(filepath.Join(cfg.DataDir, "supplies.json"))
+	if err != nil {
+		return nil, err
+	}
 	dist, err := fs.Sub(web.Dist, "dist")
 	if err != nil {
 		return nil, err
@@ -96,6 +102,7 @@ func NewApp(ctx context.Context, cfg config.Config, log *slog.Logger, version st
 	deps := Deps{
 		USB:        usb,
 		PublicURL:  cfg.PublicURL,
+		Supplies:   sup,
 		Version:    version,
 		Device:     cfg.Device,
 		CUPS:       cc,
@@ -109,6 +116,7 @@ func NewApp(ctx context.Context, cfg config.Config, log *slog.Logger, version st
 		ExtraHosts: cfg.ExtraHosts,
 	}
 	go cleanupLoop(ctx, deps)
+	go sup.Watch(ctx, cc, time.Minute, log)
 	return &App{deps: deps}, nil
 }
 
@@ -179,6 +187,7 @@ func register(api huma.API, deps Deps) {
 	registerJobs(api, deps)
 	registerScans(api, deps)
 	registerSettings(api, deps)
+	registerSupplies(api, deps)
 }
 
 func cleanupLoop(ctx context.Context, deps Deps) {

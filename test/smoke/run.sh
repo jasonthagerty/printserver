@@ -86,6 +86,10 @@ copy=$(curl -sf -X POST -H "Content-Type: application/json" -d "{\"copies\":1,\"
 [ -n "$copy" ] && [ "$copy" != null ] || fail "copy"
 pass "copied (job $copy)"
 
+tp=$(curl -sf -X POST $B/supplies/test-page | jq -r .id)
+[ -n "$tp" ] && [ "$tp" != null ] || fail "test page"
+pass "printed the test page (job $tp)"
+
 i=0
 while :; do
   left=$(curl -sf $B/jobs | jq ".active | length")
@@ -96,6 +100,14 @@ done
 bad=$(curl -sf $B/jobs | jq -r "[.recent[] | select(.state != \"completed\")] | length")
 [ "$bad" = 0 ] || fail "$bad jobs did not complete: $(curl -sf $B/jobs | jq -c .recent)"
 pass "every job completed"
+
+i=0
+until [ "$(curl -sf $B/supplies | jq -r .last_printed)" != null ]; do
+  i=$((i + 1)); [ $i -lt 40 ] || fail "last print not recorded within 2 minutes"
+  sleep 3
+done
+[ "$(curl -sf $B/supplies | jq -r .idle_days)" = 0 ] || fail "idle days not 0 after printing"
+pass "last print recorded"
 
 code=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE -H "Sec-Fetch-Site: cross-site" $B/scans/$id)
 [ "$code" = 403 ] || fail "cross-site request got $code, want 403"

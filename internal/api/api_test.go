@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"github.com/jasonthagerty/printserver/internal/cups"
 	"github.com/jasonthagerty/printserver/internal/cups/cupstest"
@@ -21,6 +22,7 @@ import (
 	"github.com/jasonthagerty/printserver/internal/escl/escltest"
 	"github.com/jasonthagerty/printserver/internal/scans"
 	"github.com/jasonthagerty/printserver/internal/settings"
+	"github.com/jasonthagerty/printserver/internal/supplies"
 	"github.com/jasonthagerty/printserver/internal/usbprobe"
 )
 
@@ -49,10 +51,14 @@ func newHarness(t *testing.T) *harness {
 	if err != nil {
 		t.Fatal(err)
 	}
+	sup, err := supplies.Open(filepath.Join(dir, "supplies.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	deps := Deps{
 		Version: "test", Device: "test", Log: log,
 		CUPS: cups.NewHTTP(cs.URL, "MG3620", nil), Scanner: scanner, Scans: store,
-		Settings: st, Nextcloud: destinations.NewNextcloud(nil),
+		Settings: st, Nextcloud: destinations.NewNextcloud(nil), Supplies: sup,
 		WebFS:    fstest.MapFS{"index.html": {Data: []byte("<!doctype html><title>Printer</title>")}},
 		Hostname: "printserver", ExtraHosts: []string{"print.home.example"},
 	}
@@ -368,5 +374,46 @@ func TestStatusReportsUSBState(t *testing.T) {
 	p := st.Body.Printer
 	if p.USB != "stale" || p.Connected || len(p.Reasons) != 1 || p.Reasons[0].Code != "usb-reconnected" {
 		t.Errorf("stale: %+v", p)
+	}
+}
+
+func TestSupplies(t *testing.T) {
+	h := newHarness(t)
+	var out SuppliesOutput
+	h.json(http.MethodGet, "/api/v1/supplies", nil, http.StatusOK, &out.Body)
+	if len(out.Body.Cartridges) != 2 || out.Body.Cartridges[0].AgeDays != -1 || out.Body.LastPrinted != nil || out.Body.IdleDays != -1 {
+		t.Fatalf("fresh = %+v", out.Body)
+	}
+
+	h.json(http.MethodPut, "/api/v1/supplies/cartridges/black", map[string]string{"installed_on": "2020-01-01"}, http.StatusOK, &out.Body)
+	if c := out.Body.Cartridges[0]; !c.Old || c.AgeDays < 365 {
+		t.Errorf("old cartridge = %+v", c)
+	}
+	h.json(http.MethodPost, "/api/v1/supplies/cartridges/black/replaced", nil, http.StatusOK, &out.Body)
+	if c := out.Body.Cartridges[0]; c.Old || c.AgeDays != 0 {
+		t.Errorf("replaced cartridge = %+v", c)
+	}
+	h.json(http.MethodPut, "/api/v1/supplies/cartridges/black", map[string]string{"installed_on": "2999-01-01"}, http.StatusUnprocessableEntity, nil)
+	h.json(http.MethodPut, "/api/v1/supplies/cartridges/magenta", map[string]string{"installed_on": ""}, http.StatusUnprocessableEntity, nil)
+
+	h.json(http.MethodPut, "/api/v1/supplies/thresholds", map[string]int{"warn_months": 3, "nudge_days": 7}, http.StatusOK, &out.Body)
+	if out.Body.WarnMonths != 3 || out.Body.NudgeDays != 7 {
+		t.Errorf("thresholds = %+v", out.Body)
+	}
+
+	// A print long ago makes the reminder show.
+	if _, err := h.deps.Supplies.RecordPrint(1, time.Now().AddDate(0, 0, -10)); err != nil {
+		t.Fatal(err)
+	}
+	h.json(http.MethodGet, "/api/v1/supplies", nil, http.StatusOK, &out.Body)
+	if out.Body.IdleDays != 10 || !out.Body.Nudge {
+		t.Errorf("idle = %d nudge = %v", out.Body.IdleDays, out.Body.Nudge)
+	}
+
+	var job PrintOutput
+	h.json(http.MethodPost, "/api/v1/supplies/test-page", nil, http.StatusCreated, &job.Body)
+	jobs := h.cups.Received()
+	if len(jobs) != 1 || jobs[0].Format != "application/pdf" || !bytes.HasPrefix(jobs[0].Data, []byte("%PDF-")) {
+		t.Errorf("test page job = %+v", jobs)
 	}
 }

@@ -10,6 +10,7 @@ import {
   cx,
   timeAgo,
 } from "../components/ui";
+import { Cartridges } from "../components/Cartridges";
 import { useJobs, useStatus } from "../queries";
 import { link } from "../router";
 
@@ -46,6 +47,7 @@ export function Home() {
       </div>
 
       <Queue active={jobs.data?.active} loading={jobs.isPending} />
+      <Cartridges />
       {!!jobs.data?.recent.length && <Recent jobs={jobs.data.recent} />}
     </div>
   );

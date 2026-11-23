@@ -290,10 +290,116 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/supplies": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Cartridge ages and last print */
+    get: operations["get-supplies"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/supplies/cartridges/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Set when a cartridge was installed */
+    put: operations["set-cartridge-date"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/supplies/cartridges/{id}/replaced": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Record that a cartridge was replaced today */
+    post: operations["replace-cartridge"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/supplies/test-page": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Print a color test page
+     * @description Uses every ink, which keeps the nozzles from drying, and shows whether one is clogged.
+     */
+    post: operations["print-test-page"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/supplies/thresholds": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Change the cartridge warning age and test page reminder */
+    put: operations["set-supply-thresholds"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    CartridgeDateInputBody: {
+      /** @description YYYY-MM-DD, or empty to clear */
+      installed_on: string;
+    };
+    CartridgeView: {
+      /**
+       * Format: int64
+       * @description -1 when the install date is not recorded
+       */
+      age_days: number;
+      id: string;
+      /** @description YYYY-MM-DD; empty when not recorded */
+      installed_on: string;
+      model: string;
+      name: string;
+      /** @description older than warn_months: the ink may be drying out */
+      old: boolean;
+    };
     CopySettings: {
       /**
        * @default color
@@ -557,12 +663,40 @@ export interface components {
       scanner: components["schemas"]["ScannerStatus"];
       version: string;
     };
+    SuppliesOutputBody: {
+      cartridges: components["schemas"]["CartridgeView"][];
+      /**
+       * Format: int64
+       * @description days since the last print; -1 when unknown
+       */
+      idle_days: number;
+      /**
+       * Format: date-time
+       * @description null until a print has been recorded
+       */
+      last_printed: string | null;
+      /** @description suggest a test page: no print for nudge_days */
+      nudge: boolean;
+      /**
+       * Format: int64
+       * @description 0: no test page reminder
+       */
+      nudge_days: number;
+      /** Format: int64 */
+      warn_months: number;
+    };
     TestNextcloudInputBody: {
       nextcloud: components["schemas"]["NextcloudInput"];
     };
     TestOutputBody: {
       message: string;
       ok: boolean;
+    };
+    ThresholdsInputBody: {
+      /** Format: int64 */
+      nudge_days: number;
+      /** Format: int64 */
+      warn_months: number;
     };
   };
   responses: never;
@@ -1256,6 +1390,163 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["StatusOutputBody"];
+        };
+      };
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["ErrorModel"];
+        };
+      };
+    };
+  };
+  "get-supplies": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuppliesOutputBody"];
+        };
+      };
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["ErrorModel"];
+        };
+      };
+    };
+  };
+  "set-cartridge-date": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: "black" | "color";
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CartridgeDateInputBody"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuppliesOutputBody"];
+        };
+      };
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["ErrorModel"];
+        };
+      };
+    };
+  };
+  "replace-cartridge": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: "black" | "color";
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuppliesOutputBody"];
+        };
+      };
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["ErrorModel"];
+        };
+      };
+    };
+  };
+  "print-test-page": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PrintOutputBody"];
+        };
+      };
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["ErrorModel"];
+        };
+      };
+    };
+  };
+  "set-supply-thresholds": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ThresholdsInputBody"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuppliesOutputBody"];
         };
       };
       /** @description Error */

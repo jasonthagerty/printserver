@@ -16,7 +16,7 @@ Built for a Canon PIXMA MG3620 on a MikroTik hAP be³ Media (arm64, RouterOS
 | CUPS + Gutenprint | The print queue and the MG3620 driver. Shared over IPP, so iPhones (AirPrint), Android (Mopria), Macs and Windows print natively. |
 | SANE + [AirSane](https://github.com/SimulPiscator/AirSane) | The scanner, as eSCL (AirScan) for Image Capture, Preview, iPhones and Windows. AirSane listens on loopback only; the Go server serves port 8090 for it. |
 | Avahi | Announces the printer and scanner on the network (mDNS). The Go server writes both records, so their "webpage" links point at the web UI rather than CUPS's or AirSane's. |
-| `printserver` (Go) | The web UI and its JSON API on port 80: print uploads, the queue, scanning (multi-page PDF), copying, and sending scans to Nextcloud. Also the eSCL proxy on port 8090 and its mDNS record. |
+| `printserver` (Go) | The web UI and its JSON API on port 80: print uploads, the queue, scanning (multi-page PDF), copying, sending scans to Nextcloud, and cartridge ages with a test page reminder (ink dries in a printer that sits). Also the eSCL proxy on port 8090 and its mDNS record. |
 | s6-overlay | Starts and supervises the above. |
 
 The web UI talks to CUPS over its local socket and to the scanner through
@@ -56,7 +56,8 @@ RouterOS's `/container/add file=`.
 | `PRINTSERVER_SCANNER_NAME` | `<printer info> Scanner` | Name scanning apps show |
 
 Everything persistent lives under `/data`: CUPS state (so the printer keeps its
-identity across upgrades), `settings.json` and `scans/`.
+identity across upgrades), `settings.json`, `supplies.json` (cartridge dates,
+last print) and `scans/`.
 
 ## Security model
 

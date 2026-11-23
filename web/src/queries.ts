@@ -32,3 +32,10 @@ export const useScans = () =>
 
 export const useSettings = () =>
   useQuery({ queryKey: ["settings"], queryFn: api.settings });
+
+export const useSupplies = () =>
+  useQuery({
+    queryKey: ["supplies"],
+    queryFn: api.supplies,
+    refetchInterval: 60_000,
+  });

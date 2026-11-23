@@ -14,7 +14,7 @@ import {
   Spinner,
   TextField,
 } from "../components/ui";
-import { useSettings, useStatus } from "../queries";
+import { useSettings, useStatus, useSupplies } from "../queries";
 
 export function Settings() {
   const settings = useSettings();
@@ -29,6 +29,7 @@ export function Settings() {
       ) : (
         <SettingsForm current={settings.data} />
       )}
+      <SupplySettings />
       <Card>
         <SectionTitle>Printing from phones and computers</SectionTitle>
         {status.data?.public_url && (
@@ -204,6 +205,71 @@ function SettingsForm({ current }: { current: SettingsData }) {
       >
         Save
       </Button>
+    </form>
+  );
+}
+
+function SupplySettings() {
+  const supplies = useSupplies();
+  if (!supplies.data) return null;
+  return (
+    <SupplyForm
+      key={`${supplies.data.warn_months}-${supplies.data.nudge_days}`}
+      warnMonths={supplies.data.warn_months}
+      nudgeDays={supplies.data.nudge_days}
+    />
+  );
+}
+
+function SupplyForm({
+  warnMonths,
+  nudgeDays,
+}: {
+  warnMonths: number;
+  nudgeDays: number;
+}) {
+  const qc = useQueryClient();
+  const [warn, setWarn] = useState(String(warnMonths));
+  const [nudge, setNudge] = useState(String(nudgeDays));
+  const save = useMutation({
+    mutationFn: () => api.setSupplyThresholds(Number(warn), Number(nudge)),
+    onSuccess: (s) => qc.setQueryData(["supplies"], s),
+  });
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        save.mutate();
+      }}
+    >
+      <Card className="space-y-4">
+        <SectionTitle>Ink cartridges</SectionTitle>
+        <TextField
+          label="Warn when a cartridge is older than (months)"
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={60}
+          value={warn}
+          onChange={(e) => setWarn(e.target.value)}
+          hint="Canon suggests using a cartridge within about 6 months of opening it."
+        />
+        <TextField
+          label="Suggest a test page after this many days without printing"
+          type="number"
+          inputMode="numeric"
+          min={0}
+          max={365}
+          value={nudge}
+          onChange={(e) => setNudge(e.target.value)}
+          hint="0 turns the suggestion off."
+        />
+        {save.error && <Banner tone="error">{save.error.message}</Banner>}
+        {save.isSuccess && <Banner tone="success">Saved.</Banner>}
+        <Button type="submit" busy={save.isPending} className="w-full">
+          Save cartridge reminders
+        </Button>
+      </Card>
     </form>
   );
 }

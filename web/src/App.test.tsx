@@ -92,6 +92,31 @@ function mockAPI() {
     "GET /print-options": printOptions,
     "GET /settings": settings,
     "GET /scans": { scans: [] },
+    "GET /supplies": {
+      cartridges: [
+        {
+          id: "black",
+          name: "Black",
+          model: "PG-245 or PG-243",
+          installed_on: "2026-01-02",
+          age_days: 220,
+          old: true,
+        },
+        {
+          id: "color",
+          name: "Color",
+          model: "CL-246 or CL-244",
+          installed_on: "",
+          age_days: -1,
+          old: false,
+        },
+      ],
+      warn_months: 6,
+      nudge_days: 21,
+      last_printed: "2026-10-01T12:00:00Z",
+      idle_days: 30,
+      nudge: true,
+    },
     "GET /scanner": {
       available: true,
       model: "x",
@@ -111,6 +136,8 @@ function mockAPI() {
         body: init?.body ? JSON.parse(String(init.body)) : undefined,
       });
       if (method === "DELETE") return new Response(null, { status: 204 });
+      if (method === "POST" && path === "/supplies/test-page")
+        return new Response(JSON.stringify({ id: 9 }), { status: 201 });
       const body = routes[`${method} ${path}`];
       if (body === undefined) return new Response("{}", { status: 404 });
       return new Response(JSON.stringify(body), {
@@ -214,4 +241,23 @@ test("scan page lists the scanner's resolutions", async () => {
     await screen.findByRole("button", { name: /^300/ }),
   ).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /^Scan$/ })).toBeEnabled();
+});
+
+test("home shows cartridge ages, the idle reminder, and prints a test page", async () => {
+  const calls = mockAPI();
+  renderAt("/");
+  expect(
+    await screen.findByText(/over 6 months: it may be drying out/),
+  ).toBeInTheDocument();
+  expect(screen.getByText("Install date not set")).toBeInTheDocument();
+  expect(screen.getByText("Last printed 30 days ago.")).toBeInTheDocument();
+  await userEvent.click(
+    screen.getByRole("button", { name: "Print a test page" }),
+  );
+  expect(await screen.findByText(/Test page sent/)).toBeInTheDocument();
+  expect(calls).toContainEqual({
+    method: "POST",
+    path: "/supplies/test-page",
+    body: undefined,
+  });
 });

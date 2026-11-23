@@ -16,6 +16,7 @@ export type Settings = Schemas["SettingsOutputBody"];
 export type SettingsInput = Schemas["SettingsInputBody"];
 export type NextcloudInput = Schemas["NextcloudInput"];
 export type TestResult = Schemas["TestOutputBody"];
+export type Supplies = Schemas["SuppliesOutputBody"];
 
 export class ApiError extends Error {
   readonly status: number;
@@ -92,6 +93,17 @@ export const api = {
   copy: (s: CopySettings) => request<{ id: number }>("POST", "/copy", s),
   settings: () => request<Settings>("GET", "/settings"),
   saveSettings: (s: SettingsInput) => request<Settings>("PUT", "/settings", s),
+  supplies: () => request<Supplies>("GET", "/supplies"),
+  cartridgeReplaced: (id: string) =>
+    request<Supplies>("POST", `/supplies/cartridges/${id}/replaced`),
+  setCartridgeDate: (id: string, installed_on: string) =>
+    request<Supplies>("PUT", `/supplies/cartridges/${id}`, { installed_on }),
+  setSupplyThresholds: (warn_months: number, nudge_days: number) =>
+    request<Supplies>("PUT", "/supplies/thresholds", {
+      warn_months,
+      nudge_days,
+    }),
+  printTestPage: () => request<{ id: number }>("POST", "/supplies/test-page"),
   testNextcloud: (n: NextcloudInput) =>
     request<TestResult>("POST", "/settings/nextcloud/test", { nextcloud: n }),
 };

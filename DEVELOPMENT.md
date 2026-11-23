@@ -16,6 +16,10 @@ internal/escl/          eSCL client for AirSane (escltest/: fake scanner)
 internal/airscan/       eSCL proxy on :8090 and the AirScan mDNS record
 internal/scans/         scanned documents on disk; PDF assembly from JPEG pages
 internal/settings/      settings.json
+internal/supplies/      cartridge ages, last print, the test page (supplies.json)
+internal/usbprobe/      is the USB printer present, and visible to the container
+internal/airprint/      the printer's mDNS record (in place of CUPS's)
+internal/avahi/         Avahi service files
 internal/destinations/  Nextcloud WebDAV upload
 internal/config/        environment variables
 web/                    React GUI; web/dist is embedded by web/embed.go
