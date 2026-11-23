@@ -65,10 +65,12 @@ type StatusOutput struct {
 // HealthOutput is the liveness check.
 type HealthOutput struct {
 	Body struct {
-		Status  string `json:"status" enum:"ok,degraded"`
-		CUPS    bool   `json:"cups"`
-		Scanner bool   `json:"scanner"`
-		Version string `json:"version"`
+		Status   string   `json:"status" enum:"ok,unhealthy" doc:"unhealthy only when restarting the container would fix it"`
+		CUPS     bool     `json:"cups"`
+		Scanner  bool     `json:"scanner"`
+		USB      string   `json:"usb" enum:"connected,stale,missing,unknown,none"`
+		Problems []string `json:"problems" doc:"what makes it unhealthy"`
+		Version  string   `json:"version"`
 	}
 }
 
@@ -108,12 +110,27 @@ func registerStatus(api huma.API, deps Deps) {
 		out.Body.Version = deps.Version
 		ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 		defer cancel()
+		b := &out.Body
+		b.Problems = []string{}
 		_, err := deps.CUPS.Printer(ctx)
-		out.Body.CUPS = err == nil
-		out.Body.Scanner = scannerStatus(ctx, deps.Scanner).Available
-		out.Body.Status = "ok"
-		if !out.Body.CUPS {
-			out.Body.Status = "degraded"
+		b.CUPS = err == nil
+		if !b.CUPS {
+			b.Problems = append(b.Problems, "cups is not answering")
+		}
+		b.Scanner = scannerStatus(ctx, deps.Scanner).Available
+		b.USB = "none"
+		if deps.USB != nil {
+			state, _ := deps.USB.Check()
+			b.USB = string(state)
+			// A printer that is off or unplugged is not a fault a restart
+			// fixes; one the container can no longer see is.
+			if state == usbprobe.Stale {
+				b.Problems = append(b.Problems, "the printer was reconnected and the container cannot see it")
+			}
+		}
+		b.Status = "ok"
+		if len(b.Problems) > 0 {
+			b.Status = "unhealthy"
 		}
 		return out, nil
 	})

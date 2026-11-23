@@ -191,13 +191,31 @@
           "cups": {
             "type": "boolean"
           },
+          "problems": {
+            "description": "what makes it unhealthy",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "scanner": {
             "type": "boolean"
           },
           "status": {
+            "description": "unhealthy only when restarting the container would fix it",
             "enum": [
               "ok",
-              "degraded"
+              "unhealthy"
+            ],
+            "type": "string"
+          },
+          "usb": {
+            "enum": [
+              "connected",
+              "stale",
+              "missing",
+              "unknown",
+              "none"
             ],
             "type": "string"
           },
@@ -209,6 +227,8 @@
           "status",
           "cups",
           "scanner",
+          "usb",
+          "problems",
           "version"
         ],
         "type": "object"

@@ -72,6 +72,22 @@ reach it by address. On the firewall, on the LAN interface, above that rule:
 
 Give the printer no internet in the IoT allowlist; it needs none.
 
+Three things that made this not work at first, on OPNsense 26.7:
+
+- **Aliases have their own Apply.** Saving an alias on Firewall ‣ Aliases does
+  not load it; until Apply there, the rule's table is empty and the rule
+  matches nothing (`pfctl -t <alias> -T show` prints nothing).
+- **A floating block needs Quick.** Without it, pf treats the block as
+  tentative and any later `quick` pass (every interface rule is quick) wins,
+  whatever the sequence. The loaded rule must read `block drop in log quick`.
+- **Beat the segment rules.** The LAN pass that actually carried the traffic
+  was the segmentation rule "LAN to the segments", not `lan net -> any`; the
+  live log (Firewall ‣ Log Files ‣ Live View, filtered on the printer's
+  address) names the rule that passed a connection.
+
+Check from a LAN host that is not the print server: TCP 631 and ping to the
+printer should time out.
+
 ## 4. Point the server at it
 
 On the router:

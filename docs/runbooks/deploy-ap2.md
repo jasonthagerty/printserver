@@ -112,6 +112,31 @@ step 4.
 - From a device on Media or Automation: the printer is listed too (the
   firewall's mDNS repeater forwards it).
 
+## Health check
+
+RouterOS 7.23 and later run a health check inside the container. The image's
+check (`printserver healthcheck`) fails only when a restart would fix the
+problem: the web server or CUPS not answering, or the printer reconnected so
+the container can no longer see it. A printer that is off or unplugged is
+not a failure.
+
+```
+/container/set printserver healthcheck-cmd="/usr/local/bin/printserver healthcheck" \
+  healthcheck-interval=1m healthcheck-timeout=10s healthcheck-start-period=2m healthcheck-retries=3
+/container/print proplist=name,healthcheck-status
+```
+
+`healthcheck-status` shows `ok: version ..., usb connected`, and the H flag.
+
+To have RouterOS restart it when unhealthy, also set
+`stop-on-unhealthy=yes restart-policy=always restart-interval=1m
+restart-max-count=3`. MikroTik does not document whether a stop for being
+unhealthy triggers the restart policy, so test it once: unplug the printer's
+USB cable for a few seconds and plug it back into the same port. The home
+screen says "reconnected"; within about 3 minutes the container should stop
+and start again by itself. If it stops and stays stopped, set
+`stop-on-unhealthy=no` and restart by hand when the home screen asks.
+
 ## Updating
 
 ```
@@ -119,8 +144,9 @@ step 4.
 /container/remove printserver
 ```
 
-Then step 4 again. Everything that matters lives on `/data` (the mount), so a
-new image keeps the queue's identity, settings and scans.
+Then step 4 again (with `devices=` and the health check settings, which
+`/container/remove` discards). Everything that matters lives on `/data` (the
+mount), so a new image keeps the queue's identity, settings and scans.
 
 ## Rollback (remove everything)
 

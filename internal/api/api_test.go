@@ -376,6 +376,20 @@ func TestStatusReportsUSBState(t *testing.T) {
 	if p.USB != "stale" || p.Connected || len(p.Reasons) != 1 || p.Reasons[0].Code != "usb-reconnected" {
 		t.Errorf("stale: %+v", p)
 	}
+	var health HealthOutput
+	h.json(http.MethodGet, "/api/v1/health", nil, http.StatusOK, &health.Body)
+	if health.Body.Status != "unhealthy" || health.Body.USB != "stale" || len(health.Body.Problems) != 1 {
+		t.Errorf("health with a stale printer = %+v", health.Body)
+	}
+
+	// Unplugged: not something a restart fixes, so still healthy.
+	if err := os.RemoveAll(filepath.Join(root, "sys", "bus", "usb", "devices", "1-1.2")); err != nil {
+		t.Fatal(err)
+	}
+	h.json(http.MethodGet, "/api/v1/health", nil, http.StatusOK, &health.Body)
+	if health.Body.Status != "ok" || health.Body.USB != "missing" {
+		t.Errorf("health with the printer unplugged = %+v", health.Body)
+	}
 }
 
 func TestSupplies(t *testing.T) {

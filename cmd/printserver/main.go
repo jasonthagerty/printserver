@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 	_ "time/tzdata" // the image has no zoneinfo; TZ still names scans in local time
@@ -41,13 +43,15 @@ func run(args []string) error {
 	switch cmd {
 	case "serve":
 		return serve()
+	case "healthcheck":
+		return healthcheck()
 	case "openapi":
 		return api.WriteOpenAPI(os.Stdout, version)
 	case "version":
 		fmt.Println(version)
 		return nil
 	default:
-		return fmt.Errorf("unknown command %q (want serve, openapi or version)", cmd)
+		return fmt.Errorf("unknown command %q (want serve, healthcheck, openapi or version)", cmd)
 	}
 }
 
@@ -141,4 +145,44 @@ func startESCL(ctx context.Context, cfg config.Config, log *slog.Logger, errc ch
 	}
 	go ann.Run(ctx, 30*time.Second)
 	return srv, nil
+}
+
+// healthcheck asks the running server for its health and exits non-zero when
+// it is unhealthy or not answering. RouterOS (healthcheck-cmd) and Docker
+// (HEALTHCHECK) run it inside the container; its one line of output is what
+// /container print shows as the health status.
+func healthcheck() error {
+	cfg, err := config.FromEnv()
+	if err != nil {
+		return err
+	}
+	_, port, err := net.SplitHostPort(cfg.Listen)
+	if err != nil {
+		return fmt.Errorf("PRINTSERVER_LISTEN: %w", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://127.0.0.1:"+port+"/api/v1/health", nil)
+	if err != nil {
+		return err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("web server not answering: %w", err)
+	}
+	defer resp.Body.Close()
+	var h struct {
+		Status   string   `json:"status"`
+		USB      string   `json:"usb"`
+		Problems []string `json:"problems"`
+		Version  string   `json:"version"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&h); err != nil {
+		return fmt.Errorf("health: HTTP %s: %w", resp.Status, err)
+	}
+	if h.Status != "ok" {
+		return fmt.Errorf("unhealthy: %s", strings.Join(h.Problems, "; "))
+	}
+	fmt.Printf("ok: version %s, usb %s\n", h.Version, h.USB)
+	return nil
 }

@@ -126,5 +126,7 @@ code=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: print.example.com:631" h
 pass "cross-site and DNS-rebinding requests refused (web UI, eSCL, CUPS)"
 '
 docker exec "$name" sh -c 'test -s /data/test-output/last-job.prn' || { echo "FAIL: no printer output" >&2; exit 1; }
+out="$(docker exec "$name" printserver healthcheck)" || { echo "FAIL: healthcheck: $out" >&2; exit 1; }
+echo "ok   healthcheck: $out"
 echo "ok   printer output written by the MG3620 driver"
 echo "smoke test passed"
