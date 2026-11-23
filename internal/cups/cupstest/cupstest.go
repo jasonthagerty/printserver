@@ -23,6 +23,7 @@ type Job struct {
 	JobAttrs  goipp.Attributes
 	Created   time.Time
 	Completed time.Time
+	Reasons   []string
 }
 
 // Server is the fake. Set fields before sending requests.
@@ -68,6 +69,18 @@ func (s *Server) SetReasons(r ...string) {
 	s.mu.Lock()
 	s.StateReasons = r
 	s.mu.Unlock()
+}
+
+// Stop marks job id stopped the way CUPS does when a filter fails.
+func (s *Server) Stop(id int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, j := range s.Jobs {
+		if j.ID == id {
+			j.State = 6
+			j.Reasons = []string{"job-completed-with-errors"}
+		}
+	}
 }
 
 // Complete marks job id completed.
@@ -146,7 +159,14 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request) {
 			g.Add(goipp.MakeAttribute("job-name", goipp.TagName, goipp.String(j.Name)))
 			g.Add(goipp.MakeAttribute("job-originating-user-name", goipp.TagName, goipp.String("web")))
 			g.Add(goipp.MakeAttribute("job-state", goipp.TagEnum, goipp.Integer(j.State)))
-			g.Add(goipp.MakeAttribute("job-state-reasons", goipp.TagKeyword, goipp.String("none")))
+			reasons := goipp.Attribute{Name: "job-state-reasons"}
+			if len(j.Reasons) == 0 {
+				reasons.Values.Add(goipp.TagKeyword, goipp.String("none"))
+			}
+			for _, r := range j.Reasons {
+				reasons.Values.Add(goipp.TagKeyword, goipp.String(r))
+			}
+			g.Add(reasons)
 			g.Add(goipp.MakeAttribute("time-at-creation", goipp.TagInteger, goipp.Integer(j.Created.Unix())))
 			if !j.Completed.IsZero() {
 				g.Add(goipp.MakeAttribute("time-at-completed", goipp.TagInteger, goipp.Integer(j.Completed.Unix())))

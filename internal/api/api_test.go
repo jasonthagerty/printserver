@@ -478,3 +478,18 @@ func TestMaintenanceSendsARawCanonJob(t *testing.T) {
 		t.Errorf("job name %q", jobs[1].Name)
 	}
 }
+
+func TestBrokenDocumentExplained(t *testing.T) {
+	h := newHarness(t)
+	body, ct := upload(t, "a.pdf", []byte("%PDF-1.4 broken"), nil)
+	if rec := h.do(http.MethodPost, "/api/v1/jobs", body, map[string]string{"Content-Type": ct}); rec.Code != http.StatusCreated {
+		t.Fatal(rec.Body)
+	}
+	h.cups.Stop(1)
+	var list JobsOutput
+	h.json(http.MethodGet, "/api/v1/jobs", nil, http.StatusOK, &list.Body)
+	j := list.Body.Active[0]
+	if j.State != "stopped" || !j.Cancelable || !strings.Contains(j.Message, "couldn't be printed") {
+		t.Errorf("stopped job = %+v", j)
+	}
+}

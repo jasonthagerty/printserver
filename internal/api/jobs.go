@@ -239,6 +239,12 @@ func toJobs(in []cups.Job) []Job {
 		if job.Reasons == nil {
 			job.Reasons = []string{}
 		}
+		// A filter that fails on a document stops the job (CUPS does not
+		// retry or abort it); it does not hold up the queue, but it stays
+		// until cancelled, with an error only a developer can read.
+		if j.State == "stopped" && slices.Contains(j.StateReasons, "job-completed-with-errors") {
+			job.Message = "This file couldn't be printed. Cancel it and try saving it as a PDF again."
+		}
 		if !j.CreatedAt.IsZero() {
 			t := j.CreatedAt
 			job.CreatedAt = &t

@@ -54,6 +54,17 @@ for alias in $(echo "${PRINTSERVER_ALLOWED_HOSTS:-},$public_host" | tr ',' ' ');
     *) sed -i "/^ServerName /a ServerAlias $alias" /etc/cups/cupsd.conf ;;
   esac
 done
+retry_interval="${PRINTSERVER_JOB_RETRY_INTERVAL:-30}"
+retry_limit="${PRINTSERVER_JOB_RETRY_LIMIT:-5}"
+case "$retry_interval$retry_limit" in
+  *[!0-9]* | "")
+    echo "init: PRINTSERVER_JOB_RETRY_INTERVAL and _LIMIT must be whole numbers" >&2
+    exit 1
+    ;;
+esac
+sed -i -e "s/^JobRetryInterval .*/JobRetryInterval $retry_interval/" \
+  -e "s/^JobRetryLimit .*/JobRetryLimit $retry_limit/" /etc/cups/cupsd.conf
+
 # The Go server writes the AirScan mDNS record here (see internal/airscan).
 mkdir -p /etc/avahi/services
 rm -f /etc/avahi/services/airscan.service /etc/avahi/services/airprint.service

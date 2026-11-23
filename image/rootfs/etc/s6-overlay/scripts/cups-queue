@@ -37,7 +37,7 @@ lpadmin -p "$queue" -E -v "$uri" \
   -L "${PRINTSERVER_LOCATION:-}" \
   -o printer-is-shared=true \
   -o PageSize="${PRINTSERVER_PAGE_SIZE:-Letter}" \
-  -o printer-error-policy=abort-job
+  -o printer-error-policy=retry-job
 lpadmin -d "$queue"
 cupsenable "$queue"
 cupsaccept "$queue"

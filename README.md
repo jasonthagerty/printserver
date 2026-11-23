@@ -56,6 +56,8 @@ RouterOS's `/container/add file=`.
 | `PRINTSERVER_PUBLIC_URL` | `http://printserver.local/` | The web UI's address: linked as the printer's and scanner's webpage, shown in Settings, and accepted by the Host checks |
 | `PRINTSERVER_INK_URI` | empty | The printer's own IPP address over Wi-Fi, polled for ink levels (see [the runbook](docs/runbooks/ink-over-wifi.md)); printing stays on USB |
 | `PRINTSERVER_INK_INTERVAL` | `6h` | How often to read ink levels |
+| `PRINTSERVER_JOB_RETRY_INTERVAL` | `30` | Seconds before CUPS retries a job the printer did not take (for example while Auto Power On wakes it) |
+| `PRINTSERVER_JOB_RETRY_LIMIT` | `5` | Retries before such a job is aborted, so it cannot block the queue |
 | `PRINTSERVER_ALLOWED_HOSTS` | empty | More DNS names for the web UI, scanner and CUPS, comma-separated |
 | `PRINTSERVER_SCANNER_NAME` | `<printer info> Scanner` | Name scanning apps show |
 

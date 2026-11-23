@@ -9,6 +9,13 @@ if [ $# -eq 0 ]; then
   exit 0
 fi
 out=/data/test-output/last-job.prn
+# The smoke test creates this to make the next job fail once, the way a
+# printer that is still waking up can.
+if [ -e /data/test-output/fail-next ]; then
+  rm -f /data/test-output/fail-next
+  echo "ERROR: simulated printer failure (test mode)" >&2
+  exit 1 # CUPS_BACKEND_FAILED: the queue's error policy decides
+fi
 if [ -n "$6" ]; then
   cat "$6" >"$out.tmp"
 else

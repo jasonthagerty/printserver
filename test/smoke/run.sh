@@ -25,7 +25,8 @@ trap cleanup EXIT
 docker buildx build --load -q -f test/smoke/client.Dockerfile -t printserver-smoke-client . >/dev/null
 docker network create "$net" >/dev/null
 docker run -d --name "$name" --network "$net" --hostname printserver \
-  -e PRINTSERVER_PUBLIC_URL=http://print.example.com/ "$image" >/dev/null
+  -e PRINTSERVER_PUBLIC_URL=http://print.example.com/ \
+  -e PRINTSERVER_JOB_RETRY_INTERVAL=5 -e PRINTSERVER_JOB_RETRY_LIMIT=3 "$image" >/dev/null
 
 docker run --rm --network "$net" -v "$out:/out" printserver-smoke-client sh -eu -c '
 B=http://printserver.local/api/v1
@@ -139,4 +140,24 @@ echo "ok   maintenance job reached the printer byte for byte"
 out="$(docker exec "$name" printserver healthcheck)" || { echo "FAIL: healthcheck: $out" >&2; exit 1; }
 echo "ok   healthcheck: $out"
 echo "ok   printer output written by the MG3620 driver"
+docker exec "$name" sh -eu -c '
+fail() { echo "FAIL: $*" >&2; exit 1; }
+state() { lpstat -W all -o MG3620 2>/dev/null | grep -q "^MG3620-$1 " || fail "no job $1"; ipptool -tv ipp://localhost/jobs/$1 /usr/share/cups/ipptool/get-job-attributes.test 2>/dev/null | sed -n "s/.*job-state (enum) = //p" | head -1; }
+wait_state() { i=0; until [ "$(state "$1")" = "$2" ]; do i=$((i + 1)); [ $i -lt 60 ] || fail "job $1 is $(state "$1"), want $2"; sleep 1; done; }
+
+touch /data/test-output/fail-next
+printf "wake-up test
+" >/tmp/wake.txt
+id=$(lp -d MG3620 /tmp/wake.txt | sed -n "s/.*MG3620-\([0-9]*\).*/\1/p")
+wait_state "$id" completed
+echo "ok   a job the printer refused once was retried and printed"
+
+printf "%%PDF-1.4\nbroken\n" >/tmp/bad.pdf
+bad=$(lp -d MG3620 /tmp/bad.pdf | sed -n "s/.*MG3620-\([0-9]*\).*/\1/p")
+wait_state "$bad" processing-stopped
+id=$(lp -d MG3620 /tmp/wake.txt | sed -n "s/.*MG3620-\([0-9]*\).*/\1/p")
+wait_state "$id" completed
+echo "ok   a broken file stops without blocking the queue"
+cancel "$bad"
+'
 echo "smoke test passed"
