@@ -111,10 +111,14 @@ func TestTestPageIsAValidPDF(t *testing.T) {
 			t.Errorf("object %d offset wrong", i+1)
 		}
 	}
-	for _, ink := range []string{"1.00 0.00 0.00 0.00 k", "0.00 1.00 0.00 0.00 k", "0.00 0.00 1.00 0.00 k", "0.00 0.00 0.00 1.00 k"} {
-		if !bytes.Contains(pdf, []byte(ink)) {
-			t.Errorf("no %s bar", ink)
+	for _, c := range []string{"0.00 1.00 1.00 rg", "1.00 0.00 1.00 rg", "1.00 1.00 0.00 rg", "0.00 0.00 0.00 rg"} {
+		if !bytes.Contains(pdf, []byte(c)) {
+			t.Errorf("no %s bar", c)
 		}
+	}
+	// Each bar resets the fill to black, so the next label is black text.
+	if n := bytes.Count(pdf, []byte("re f 0 g")); n != 17 {
+		t.Errorf("%d fills reset to black, want 17 (7 bars and 10 gray steps)", n)
 	}
 }
 

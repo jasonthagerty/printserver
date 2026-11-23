@@ -53,6 +53,7 @@ RouterOS's `/container/add file=`.
 | `PRINTSERVER_LOCATION` | empty | Location phones show |
 | `PRINTSERVER_PPD` | `gutenprint.5.3://bjc-PIXMA-MG3620/expert` | Driver for another printer |
 | `PRINTSERVER_PAGE_SIZE` | `Letter` | Default paper |
+| `PRINTSERVER_PRINTER_OPTIONS` | empty | Driver settings for every job, space-separated, e.g. `StpColorCorrection=Bright StpDensity=800` (see `lpoptions -p MG3620 -l`; try them with `printserver test-page \| lp -d MG3620 -o ...`) |
 | `PRINTSERVER_PUBLIC_URL` | `http://printserver.local/` | The web UI's address: linked as the printer's and scanner's webpage, shown in Settings, and accepted by the Host checks |
 | `PRINTSERVER_INK_URI` | empty | The printer's own IPP address over Wi-Fi, polled for ink levels (see [the runbook](docs/runbooks/ink-over-wifi.md)); printing stays on USB |
 | `PRINTSERVER_INK_INTERVAL` | `6h` | How often to read ink levels |

@@ -24,6 +24,7 @@ import (
 	"github.com/jasonthagerty/printserver/internal/avahi"
 	"github.com/jasonthagerty/printserver/internal/config"
 	"github.com/jasonthagerty/printserver/internal/escl"
+	"github.com/jasonthagerty/printserver/internal/supplies"
 )
 
 var version = "dev"
@@ -45,13 +46,18 @@ func run(args []string) error {
 		return serve()
 	case "healthcheck":
 		return healthcheck()
+	case "test-page":
+		// For trying driver settings by hand:
+		//   printserver test-page | lp -d MG3620 -o StpDensity=800
+		_, err := os.Stdout.Write(supplies.TestPage(time.Now()))
+		return err
 	case "openapi":
 		return api.WriteOpenAPI(os.Stdout, version)
 	case "version":
 		fmt.Println(version)
 		return nil
 	default:
-		return fmt.Errorf("unknown command %q (want serve, healthcheck, openapi or version)", cmd)
+		return fmt.Errorf("unknown command %q (want serve, healthcheck, test-page, openapi or version)", cmd)
 	}
 }
 

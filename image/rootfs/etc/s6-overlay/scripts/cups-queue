@@ -38,6 +38,14 @@ lpadmin -p "$queue" -E -v "$uri" \
   -o printer-is-shared=true \
   -o PageSize="${PRINTSERVER_PAGE_SIZE:-Letter}" \
   -o printer-error-policy=retry-job
+# Driver settings that should apply to every job (color tuning, for example
+# "StpColorCorrection=Bright StpDensity=800"), from PRINTSERVER_PRINTER_OPTIONS.
+for opt in ${PRINTSERVER_PRINTER_OPTIONS:-}; do
+  case "$opt" in
+    *=*) lpadmin -p "$queue" -o "$opt" && echo "cups-queue: default $opt" ;;
+    *) echo "cups-queue: ignoring '$opt' in PRINTSERVER_PRINTER_OPTIONS (want Name=Value)" >&2 ;;
+  esac
+done
 lpadmin -d "$queue"
 cupsenable "$queue"
 cupsaccept "$queue"

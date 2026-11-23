@@ -9,34 +9,36 @@ import (
 // TestPage is a one-page PDF that uses every ink: a bar each of cyan,
 // magenta, yellow and black, the mixes, and a gray ramp. Printing it now
 // and then keeps the nozzles from drying, and the bars show at a glance
-// whether one is clogged.
+// whether one is clogged. Colors are sRGB, as phones and computers send
+// them, so the page also shows how the driver's color looks in practice.
 func TestPage(at time.Time) []byte {
 	var content bytes.Buffer
 	text := func(x, y, size float64, s string) {
 		fmt.Fprintf(&content, "BT /F1 %.0f Tf %.1f %.1f Td (%s) Tj ET\n", size, x, y, pdfEscape(s))
 	}
-	rect := func(x, y, w, h float64, c, m, yel, k float64) {
-		fmt.Fprintf(&content, "%.2f %.2f %.2f %.2f k %.1f %.1f %.1f %.1f re f\n", c, m, yel, k, x, y, w, h)
+	rect := func(x, y, w, h float64, r, g, b float64) {
+		fmt.Fprintf(&content, "%.2f %.2f %.2f rg %.1f %.1f %.1f %.1f re f 0 g\n", r, g, b, x, y, w, h)
 	}
 	text(72, 720, 24, "Printer test page")
 	text(72, 696, 11, "Printed "+at.Format("Monday, January 2, 2006 at 3:04 PM")+" by printserver.")
-	text(72, 680, 11, "Every bar should be solid. Streaks or gaps mean a clogged nozzle: run Cleaning on the printer.")
+	text(72, 680, 11, "Every bar should be solid. Streaks or gaps mean a clogged nozzle: use Clean print head on the home screen.")
 	bars := []struct {
-		label      string
-		c, m, y, k float64
+		label   string
+		r, g, b float64
 	}{
-		{"Cyan", 1, 0, 0, 0}, {"Magenta", 0, 1, 0, 0}, {"Yellow", 0, 0, 1, 0}, {"Black", 0, 0, 0, 1},
-		{"Red", 0, 1, 1, 0}, {"Green", 1, 0, 1, 0}, {"Blue", 1, 1, 0, 0},
+		{"Cyan", 0, 1, 1}, {"Magenta", 1, 0, 1}, {"Yellow", 1, 1, 0}, {"Black", 0, 0, 0},
+		{"Red", 1, 0, 0}, {"Green", 0, 1, 0}, {"Blue", 0, 0, 1},
 	}
 	y := 620.0
 	for _, b := range bars {
 		text(72, y+12, 11, b.label)
-		rect(150, y, 390, 34, b.c, b.m, b.y, b.k)
+		rect(150, y, 390, 34, b.r, b.g, b.b)
 		y -= 50
 	}
 	text(72, y+12, 11, "Gray")
 	for i := 0; i < 10; i++ {
-		rect(150+float64(i)*39, y, 39, 34, 0, 0, 0, float64(i+1)/10)
+		v := 1 - float64(i+1)/10 // 10% to 100% gray
+		rect(150+float64(i)*39, y, 39, 34, v, v, v)
 	}
 
 	var pdf bytes.Buffer
