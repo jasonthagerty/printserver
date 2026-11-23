@@ -30,3 +30,28 @@ func TestBadDevice(t *testing.T) {
 		t.Fatal("accepted an unknown device mode")
 	}
 }
+
+func TestPublicURL(t *testing.T) {
+	t.Setenv("PRINTSERVER_PUBLIC_URL", "http://Print.Example.com")
+	c, err := FromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.PublicURL != "http://Print.Example.com/" || !slices.Contains(c.ExtraHosts, "print.example.com") {
+		t.Errorf("url %q, hosts %q", c.PublicURL, c.ExtraHosts)
+	}
+	t.Setenv("PRINTSERVER_PUBLIC_URL", "ftp://x")
+	if _, err := FromEnv(); err == nil {
+		t.Error("accepted an ftp URL")
+	}
+}
+
+func TestPublicURLDefault(t *testing.T) {
+	c, err := FromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.PublicURL != "http://printserver.local/" || len(c.ExtraHosts) != 0 {
+		t.Errorf("url %q, hosts %q", c.PublicURL, c.ExtraHosts)
+	}
+}

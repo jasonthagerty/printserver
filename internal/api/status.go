@@ -58,6 +58,7 @@ type StatusOutput struct {
 		Scanner      ScannerStatus  `json:"scanner"`
 		Mode         string         `json:"mode" enum:"test,usb" doc:"test: a simulated printer and scanner"`
 		Version      string         `json:"version"`
+		PublicURL    string         `json:"public_url" doc:"the web UI's address for other devices"`
 	}
 }
 
@@ -80,7 +81,7 @@ func registerStatus(api huma.API, deps Deps) {
 		Tags:        []string{"Status"},
 	}, func(ctx context.Context, _ *struct{}) (*StatusOutput, error) {
 		out := &StatusOutput{}
-		out.Body.Mode, out.Body.Version = deps.Device, deps.Version
+		out.Body.Mode, out.Body.Version, out.Body.PublicURL = deps.Device, deps.Version, deps.PublicURL
 		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
 

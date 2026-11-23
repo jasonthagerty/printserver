@@ -31,6 +31,18 @@ export function Settings() {
       )}
       <Card>
         <SectionTitle>Printing from phones and computers</SectionTitle>
+        {status.data?.public_url && (
+          <p className="mb-3 text-slate-600 dark:text-slate-300">
+            This page is at{" "}
+            <a
+              href={status.data.public_url}
+              className="font-semibold break-all text-teal-700 dark:text-teal-300"
+            >
+              {status.data.public_url.replace(/\/$/, "")}
+            </a>{" "}
+            on any device at home.
+          </p>
+        )}
         <ul className="space-y-2 text-slate-600 dark:text-slate-300">
           <li>
             <b>iPhone and iPad:</b> Share, then Print. The printer appears as{" "}

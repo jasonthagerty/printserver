@@ -15,7 +15,7 @@ Built for a Canon PIXMA MG3620 on a MikroTik hAP be³ Media (arm64, RouterOS
 |---|---|
 | CUPS + Gutenprint | The print queue and the MG3620 driver. Shared over IPP, so iPhones (AirPrint), Android (Mopria), Macs and Windows print natively. |
 | SANE + [AirSane](https://github.com/SimulPiscator/AirSane) | The scanner, as eSCL (AirScan) for Image Capture, Preview, iPhones and Windows. AirSane listens on loopback only; the Go server serves port 8090 for it. |
-| Avahi | Announces the printer and scanner on the network (mDNS). |
+| Avahi | Announces the printer and scanner on the network (mDNS). The Go server writes both records, so their "webpage" links point at the web UI rather than CUPS's or AirSane's. |
 | `printserver` (Go) | The web UI and its JSON API on port 80: print uploads, the queue, scanning (multi-page PDF), copying, and sending scans to Nextcloud. Also the eSCL proxy on port 8090 and its mDNS record. |
 | s6-overlay | Starts and supervises the above. |
 
@@ -51,7 +51,8 @@ RouterOS's `/container/add file=`.
 | `PRINTSERVER_LOCATION` | empty | Location phones show |
 | `PRINTSERVER_PPD` | `gutenprint.5.3://bjc-PIXMA-MG3620/expert` | Driver for another printer |
 | `PRINTSERVER_PAGE_SIZE` | `Letter` | Default paper |
-| `PRINTSERVER_ALLOWED_HOSTS` | empty | Extra DNS names for the web UI, scanner and CUPS, comma-separated |
+| `PRINTSERVER_PUBLIC_URL` | `http://printserver.local/` | The web UI's address: linked as the printer's and scanner's webpage, shown in Settings, and accepted by the Host checks |
+| `PRINTSERVER_ALLOWED_HOSTS` | empty | More DNS names for the web UI, scanner and CUPS, comma-separated |
 | `PRINTSERVER_SCANNER_NAME` | `<printer info> Scanner` | Name scanning apps show |
 
 Everything persistent lives under `/data`: CUPS state (so the printer keeps its

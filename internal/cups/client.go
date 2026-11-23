@@ -134,6 +134,11 @@ func (c *Client) do(ctx context.Context, path string, req *goipp.Message, doc io
 type Printer struct {
 	Name          string
 	Info          string
+	Location      string
+	UUID          string   // urn:uuid:...
+	URF           []string // urf-supported, for AirPrint
+	Type          int      // CUPS printer-type bits
+	Color         bool
 	MakeAndModel  string
 	DeviceURI     string
 	State         string // idle, processing, stopped
@@ -165,7 +170,8 @@ var printerAttrs = []string{
 	"marker-names", "marker-colors", "marker-types", "marker-levels",
 	"media-supported", "media-default", "sides-supported",
 	"print-color-mode-supported", "print-quality-supported",
-	"document-format-supported",
+	"document-format-supported", "printer-location", "printer-uuid",
+	"urf-supported", "printer-type", "color-supported",
 }
 
 // Printer returns the queue's current state.
@@ -181,6 +187,11 @@ func (c *Client) Printer(ctx context.Context) (Printer, error) {
 	p := Printer{
 		Name:          firstString(a, "printer-name"),
 		Info:          firstString(a, "printer-info"),
+		Location:      firstString(a, "printer-location"),
+		UUID:          firstString(a, "printer-uuid"),
+		URF:           strs(a, "urf-supported"),
+		Type:          firstInt(a, "printer-type", 0),
+		Color:         firstBool(a, "color-supported"),
 		MakeAndModel:  firstString(a, "printer-make-and-model"),
 		DeviceURI:     firstString(a, "device-uri"),
 		State:         printerState(firstInt(a, "printer-state", 0)),

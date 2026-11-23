@@ -24,7 +24,8 @@ trap cleanup EXIT
 
 docker buildx build --load -q -f test/smoke/client.Dockerfile -t printserver-smoke-client . >/dev/null
 docker network create "$net" >/dev/null
-docker run -d --name "$name" --network "$net" --hostname printserver "$image" >/dev/null
+docker run -d --name "$name" --network "$net" --hostname printserver \
+  -e PRINTSERVER_PUBLIC_URL=http://print.example.com/ "$image" >/dev/null
 
 docker run --rm --network "$net" -v "$out:/out" printserver-smoke-client sh -eu -c '
 B=http://printserver.local/api/v1
@@ -37,9 +38,18 @@ until curl -sf $B/health >/dev/null 2>&1; do
 done
 pass "web API answers"
 
-ipp=$(avahi-browse -rtp _ipp._tcp 2>/dev/null | grep "^=" | grep IPv4 || true)
+i=0
+while :; do
+  ipp=$(avahi-browse -rtp _ipp._tcp 2>/dev/null | grep "^=" | grep IPv4 || true)
+  [ -n "$ipp" ] && break
+  i=$((i + 1)); [ $i -lt 10 ] || fail "no _ipp._tcp record"
+  sleep 3
+done
+[ "$(echo "$ipp" | wc -l)" = 1 ] || fail "want one printer record (CUPS must not publish its own): $ipp"
 echo "$ipp" | grep -q "URF=" || fail "no AirPrint (URF) record: $ipp"
 echo "$ipp" | grep -q "Duplex=T" || fail "duplex not advertised"
+echo "$ipp" | grep -q "adminurl=http://print.example.com/" || fail "printer webpage is not the web UI: $ipp"
+avahi-browse -rtp _ipps._tcp 2>/dev/null | grep "^=" | grep -q IPv4 || fail "no _ipps._tcp record"
 avahi-browse -rtp _universal._sub._ipp._tcp 2>/dev/null | grep -q "^=" || fail "no _universal subtype (iOS needs it)"
 pass "AirPrint printer advertised"
 
@@ -97,6 +107,10 @@ code=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: rebound.example:631" htt
 [ "$code" = 400 ] || fail "foreign Host on CUPS got $code, want 400"
 code=$(curl -s -o /dev/null -w "%{http_code}" http://printserver.local:631/printers/MG3620)
 [ "$code" = 200 ] || fail "CUPS by mDNS name got $code, want 200"
+code=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: print.example.com" $B/status)
+[ "$code" = 200 ] || fail "web UI by its public name got $code, want 200"
+code=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: print.example.com:631" http://printserver.local:631/printers/MG3620)
+[ "$code" = 200 ] || fail "CUPS by the public name got $code, want 200"
 pass "cross-site and DNS-rebinding requests refused (web UI, eSCL, CUPS)"
 '
 docker exec "$name" sh -c 'test -s /data/test-output/last-job.prn' || { echo "FAIL: no printer output" >&2; exit 1; }

@@ -60,9 +60,18 @@ VLAN 1 (the dynamic "added by pvid" row).
 
 `TZ` sets the time shown on scans and jobs; use your own zone.
 
-Optional: `key=PRINTSERVER_ALLOWED_HOSTS value=print.example.com` if you give
-it a DNS name (the web UI refuses names it does not know, which stops DNS
-rebinding). IP addresses and `printserver.local` always work.
+Optional, if you give it a DNS name (for example an Unbound host override
+`print.example.com` → the container's address):
+
+```
+/container/envs/add list=printserver key=PRINTSERVER_PUBLIC_URL value=http://print.example.com/
+```
+
+That name becomes the "printer webpage" link on Macs and in scanning apps,
+appears in Settings, and is accepted by the Host checks (the web UI, scanner
+and CUPS refuse names they do not know, which stops DNS rebinding). IP
+addresses and `printserver.local` always work. For more names, add
+`key=PRINTSERVER_ALLOWED_HOSTS value=a.example.com,b.example.com`.
 
 ## 4. Pull and start
 

@@ -43,8 +43,10 @@ case "$host" in
 esac
 sed -i "s/^host-name=.*/host-name=$host/" /etc/avahi/avahi-daemon.conf
 sed -i -e "s/^ServerName .*/ServerName $host.local/" -e '/^ServerAlias /d' /etc/cups/cupsd.conf
-# Extra DNS names (PRINTSERVER_ALLOWED_HOSTS) are accepted by cupsd too.
-for alias in $(echo "${PRINTSERVER_ALLOWED_HOSTS:-}" | tr ',' ' '); do
+# Extra DNS names (PRINTSERVER_ALLOWED_HOSTS, and the host of
+# PRINTSERVER_PUBLIC_URL) are accepted by cupsd too.
+public_host="$(echo "${PRINTSERVER_PUBLIC_URL:-}" | sed -E 's#^[a-zA-Z]+://([^/:]+).*#\1#')"
+for alias in $(echo "${PRINTSERVER_ALLOWED_HOSTS:-},$public_host" | tr ',' ' '); do
   case "$alias" in
     *[!A-Za-z0-9.-]*)
       echo "init: ignoring invalid host name '$alias' in PRINTSERVER_ALLOWED_HOSTS" >&2
@@ -54,7 +56,7 @@ for alias in $(echo "${PRINTSERVER_ALLOWED_HOSTS:-}" | tr ',' ' '); do
 done
 # The Go server writes the AirScan mDNS record here (see internal/airscan).
 mkdir -p /etc/avahi/services
-rm -f /etc/avahi/services/airscan.service
+rm -f /etc/avahi/services/airscan.service /etc/avahi/services/airprint.service
 
 dbus-uuidgen --ensure
 rm -f /run/dbus/pid /run/avahi-daemon/pid

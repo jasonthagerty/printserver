@@ -782,6 +782,10 @@
           "printer_error": {
             "type": "string"
           },
+          "public_url": {
+            "description": "the web UI's address for other devices",
+            "type": "string"
+          },
           "scanner": {
             "$ref": "#/components/schemas/ScannerStatus"
           },
@@ -793,7 +797,8 @@
           "printer",
           "scanner",
           "mode",
-          "version"
+          "version",
+          "public_url"
         ],
         "type": "object"
       },

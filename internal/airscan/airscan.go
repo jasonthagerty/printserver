@@ -8,20 +8,16 @@
 package airscan
 
 import (
-	"bytes"
 	"context"
-	"encoding/xml"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/jasonthagerty/printserver/internal/avahi"
 	"github.com/jasonthagerty/printserver/internal/escl"
 )
 
@@ -56,6 +52,8 @@ type Announcer struct {
 	// loopback record (the scanner's model), or Avahi renames one of them.
 	Name string
 	Log  *slog.Logger
+	// AdminURL is the web UI's scan page, linked from scanning apps.
+	AdminURL string
 	// Reload makes Avahi reread its service files. Defaults to
 	// `avahi-daemon --reload`.
 	Reload func(ctx context.Context) error
@@ -82,42 +80,19 @@ func (a *Announcer) Run(ctx context.Context, interval time.Duration) {
 func (a *Announcer) Update(ctx context.Context) {
 	cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	path := filepath.Join(a.Dir, fileName)
 	var want []byte
 	caps, err := a.Scanner.Capabilities(cctx)
 	if err == nil {
 		want = a.serviceFile(caps)
 	}
-	have, _ := os.ReadFile(path)
-	if bytes.Equal(have, want) {
-		return
-	}
-	if want == nil {
-		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-			a.Log.Warn("removing AirScan record", "err", err)
-			return
-		}
-		a.Log.Info("scanner gone; AirScan record removed")
-	} else {
-		tmp := path + ".tmp"
-		if err := os.WriteFile(tmp, want, 0o644); err != nil {
-			a.Log.Warn("writing AirScan record", "err", err)
-			return
-		}
-		if err := os.Rename(tmp, path); err != nil {
-			a.Log.Warn("writing AirScan record", "err", err)
-			return
-		}
+	changed, err := avahi.Dir{Path: a.Dir, Reload: a.Reload}.Set(cctx, fileName, want)
+	switch {
+	case err != nil:
+		a.Log.Warn("AirScan record", "err", err)
+	case changed && want != nil:
 		a.Log.Info("AirScan record published", "scanner", caps.MakeAndModel)
-	}
-	reload := a.Reload
-	if reload == nil {
-		reload = func(ctx context.Context) error {
-			return exec.CommandContext(ctx, "avahi-daemon", "--reload").Run()
-		}
-	}
-	if err := reload(cctx); err != nil {
-		a.Log.Warn("reloading Avahi", "err", err)
+	case changed:
+		a.Log.Info("scanner gone; AirScan record removed")
 	}
 }
 
@@ -162,21 +137,10 @@ func (a *Announcer) serviceFile(c escl.Capabilities) []byte {
 	if c.UUID != "" {
 		txt = append(txt, "uuid="+c.UUID)
 	}
-	var b bytes.Buffer
-	b.WriteString("<?xml version=\"1.0\" standalone='no'?>\n<!DOCTYPE service-group SYSTEM \"avahi-service.dtd\">\n<service-group>\n")
-	fmt.Fprintf(&b, "  <name>%s</name>\n", esc(name))
-	fmt.Fprintf(&b, "  <service>\n    <type>_uscan._tcp</type>\n    <port>%d</port>\n", a.Port)
-	for _, t := range txt {
-		fmt.Fprintf(&b, "    <txt-record>%s</txt-record>\n", esc(t))
+	if a.AdminURL != "" {
+		txt = append(txt, "adminurl="+a.AdminURL)
 	}
-	b.WriteString("  </service>\n</service-group>\n")
-	return b.Bytes()
-}
-
-func esc(s string) string {
-	var b strings.Builder
-	_ = xml.EscapeText(&b, []byte(s))
-	return b.String()
+	return avahi.File(name, avahi.Service{Type: "_uscan._tcp", Port: a.Port, TXT: txt})
 }
 
 func appendNew(s []string, v string) []string {

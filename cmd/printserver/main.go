@@ -16,8 +16,10 @@ import (
 	"time"
 	_ "time/tzdata" // the image has no zoneinfo; TZ still names scans in local time
 
+	"github.com/jasonthagerty/printserver/internal/airprint"
 	"github.com/jasonthagerty/printserver/internal/airscan"
 	"github.com/jasonthagerty/printserver/internal/api"
+	"github.com/jasonthagerty/printserver/internal/avahi"
 	"github.com/jasonthagerty/printserver/internal/config"
 	"github.com/jasonthagerty/printserver/internal/escl"
 )
@@ -74,6 +76,14 @@ func serve() error {
 	go func() { errc <- srv.ListenAndServe() }()
 	log.Info("listening", "addr", cfg.Listen, "version", version, "device", cfg.Device)
 
+	if cfg.AnnouncePrinter {
+		ann := &airprint.Announcer{
+			CUPS: app.CUPS(), Dir: avahi.Dir{Path: cfg.AvahiDir},
+			Hostname: cfg.Hostname, AdminURL: cfg.PublicURL, Port: 631, Log: log,
+		}
+		go ann.Run(ctx, 30*time.Second)
+	}
+
 	if cfg.ESCLListen != "" {
 		esclSrv, err := startESCL(ctx, cfg, log, errc)
 		if err != nil {
@@ -127,6 +137,7 @@ func startESCL(ctx context.Context, cfg config.Config, log *slog.Logger, errc ch
 	ann := &airscan.Announcer{
 		Scanner: escl.New(cfg.ESCLURL, nil), Dir: cfg.AvahiDir,
 		Port: port, Hostname: cfg.Hostname, Name: cfg.ScannerName, Log: log,
+		AdminURL: cfg.PublicURL + "scan",
 	}
 	go ann.Run(ctx, 30*time.Second)
 	return srv, nil

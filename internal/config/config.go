@@ -4,8 +4,10 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -28,6 +30,12 @@ type Config struct {
 	ScannerName string
 	// USBVendor is the printer's USB vendor ID, for the connection check.
 	USBVendor string
+	// PublicURL is the web UI's address, linked as the printer's and
+	// scanner's webpage. Its host is accepted by the Host checks.
+	PublicURL string
+	// AnnouncePrinter publishes the AirPrint record (in the image, where
+	// CUPS's own publishing is off).
+	AnnouncePrinter bool
 }
 
 // FromEnv reads the configuration.
@@ -45,6 +53,18 @@ func FromEnv() (Config, error) {
 		AvahiDir:   env("PRINTSERVER_AVAHI_SERVICES", "/etc/avahi/services"),
 	}
 	c.USBVendor = env("PRINTSERVER_USB_VENDOR", "04a9") // Canon
+	c.AnnouncePrinter = os.Getenv("PRINTSERVER_ANNOUNCE_PRINTER") == "1"
+	c.PublicURL = env("PRINTSERVER_PUBLIC_URL", "http://"+c.Hostname+".local/")
+	pu, err := url.Parse(c.PublicURL)
+	if err != nil || (pu.Scheme != "http" && pu.Scheme != "https") || pu.Hostname() == "" {
+		return Config{}, fmt.Errorf("PRINTSERVER_PUBLIC_URL must be an http(s) URL, got %q", c.PublicURL)
+	}
+	if !strings.HasSuffix(c.PublicURL, "/") {
+		c.PublicURL += "/"
+	}
+	if h := strings.ToLower(pu.Hostname()); h != c.Hostname+".local" && !slices.Contains(c.ExtraHosts, h) {
+		c.ExtraHosts = append(c.ExtraHosts, h)
+	}
 	c.ScannerName = env("PRINTSERVER_SCANNER_NAME", env("PRINTSERVER_PRINTER_INFO", "Canon MG3620")+" Scanner")
 	for _, h := range strings.Split(os.Getenv("PRINTSERVER_ALLOWED_HOSTS"), ",") {
 		if h = strings.TrimSpace(h); h != "" {

@@ -552,6 +552,8 @@ export interface components {
       /** @description null when the print service is not answering */
       printer: components["schemas"]["PrinterStatus"];
       printer_error?: string;
+      /** @description the web UI's address for other devices */
+      public_url: string;
       scanner: components["schemas"]["ScannerStatus"];
       version: string;
     };

@@ -58,6 +58,8 @@ type Deps struct {
 	ExtraHosts []string
 	// USB checks the printer's USB connection; nil in test mode.
 	USB *usbprobe.Probe
+	// PublicURL is the web UI's address, shown to users.
+	PublicURL string
 }
 
 // App is the running server.
@@ -93,6 +95,7 @@ func NewApp(ctx context.Context, cfg config.Config, log *slog.Logger, version st
 	}
 	deps := Deps{
 		USB:        usb,
+		PublicURL:  cfg.PublicURL,
 		Version:    version,
 		Device:     cfg.Device,
 		CUPS:       cc,
@@ -108,6 +111,9 @@ func NewApp(ctx context.Context, cfg config.Config, log *slog.Logger, version st
 	go cleanupLoop(ctx, deps)
 	return &App{deps: deps}, nil
 }
+
+// CUPS is the print queue client.
+func (a *App) CUPS() *cups.Client { return a.deps.CUPS }
 
 // Handler is the full HTTP handler.
 func (a *App) Handler() http.Handler { return NewRouter(a.deps) }
