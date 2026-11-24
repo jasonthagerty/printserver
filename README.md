@@ -33,7 +33,7 @@ collide.
 
 ## Deploying
 
-- [Deploy to AP2](docs/runbooks/deploy-ap2.md) (test mode first)
+- [Deploy to a RouterOS device](docs/runbooks/deploy-routeros.md) (test mode first)
 - [Switch to the USB printer](docs/runbooks/usb-printer.md)
 - [Ink levels over the printer's Wi-Fi](docs/runbooks/ink-over-wifi.md) (optional)
 - [Printing from the Work and Guest networks](docs/runbooks/work-and-guest-printing.md) (optional)

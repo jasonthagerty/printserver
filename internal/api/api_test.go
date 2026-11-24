@@ -307,7 +307,7 @@ func TestHostAndOriginChecks(t *testing.T) {
 	}{
 		{"printserver.local", nil, http.MethodGet, http.StatusOK},
 		{"PrintServer.local.", nil, http.MethodGet, http.StatusOK},
-		{"192.168.252.30:80", nil, http.MethodGet, http.StatusOK},
+		{"192.0.2.30:80", nil, http.MethodGet, http.StatusOK},
 		{"[fe80::1]", nil, http.MethodGet, http.StatusOK},
 		{"print.home.example", nil, http.MethodGet, http.StatusOK},
 		{"rebound.example", nil, http.MethodGet, http.StatusMisdirectedRequest},

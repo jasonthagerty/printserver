@@ -80,9 +80,9 @@ Three things that made this not work at first, on OPNsense 26.7:
 - **A floating block needs Quick.** Without it, pf treats the block as
   tentative and any later `quick` pass (every interface rule is quick) wins,
   whatever the sequence. The loaded rule must read `block drop in log quick`.
-- **Beat the segment rules.** The LAN pass that actually carried the traffic
-  was the segmentation rule "LAN to the segments", not `lan net -> any`; the
-  live log (Firewall ‣ Log Files ‣ Live View, filtered on the printer's
+- **Beat every broader pass.** The LAN pass that actually carried the
+  traffic may be another, earlier rule (here, one letting the LAN into the
+  other VLANs), not `lan net -> any`; the live log (Firewall ‣ Log Files ‣ Live View, filtered on the printer's
   address) names the rule that passed a connection.
 
 Check from a LAN host that is not the print server: TCP 631 and ping to the
@@ -99,5 +99,5 @@ On the router:
 ```
 
 The log shows a reading within seconds of start (or "ink poll failed;
-keeping the last reading"). The home screen's cartridge card then shows the
-levels and "checked ... ago".
+keeping the last reading"). The home screen then shows the levels, and Settings ‣
+Ink cartridges says "checked ... ago".

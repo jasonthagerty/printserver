@@ -1,7 +1,8 @@
-# Deploy to AP2
+# Deploy to a RouterOS device
 
-Puts the printserver container on AP2 (hAP be³ Media, RouterOS 7.25.1) with its
-own address on the house LAN. The first run uses test mode (simulated printer
+Puts the printserver container on a MikroTik router or AP running RouterOS 7
+(written on a hAP be³ Media, RouterOS 7.25.1) with its own address on the
+house LAN. The first run uses test mode (simulated printer
 and scanner), which proves the parts that do not need the printer: the image
 pull from GitHub, mDNS through the bridge, AirPrint discovery on phones, and the
 web UI. [usb-printer.md](usb-printer.md) switches it to the real printer.
@@ -12,10 +13,11 @@ change.
 
 ## What you need
 
-- **An address for the container** on `192.168.252.0/24`, outside the Kea
-  pool and unused. The commands below write it as `192.168.252.PRINT`; replace
-  that everywhere. Add a Kea reservation or an Unbound host override
-  (`print.<your domain>`) if you want a name; the container also announces
+- **An address for the container** on your LAN, outside the DHCP pool and
+  unused. The commands below use the example LAN `192.0.2.0/24` with its
+  router at `192.0.2.1`, and write the container's address as
+  `192.0.2.PRINT`; replace all three with yours. Add a DHCP reservation or a
+  DNS host override (`print.<your domain>`) if you want a name; the container also announces
   `printserver.local` itself.
 - **The image** published by this repo's Image workflow:
   `ghcr.io/jasonthagerty/printserver:latest`. The GHCR package must be public
@@ -37,12 +39,13 @@ assume `usb1-part1`; if `/disk/print` shows another mount point, use it instead.
 ## 2. Network: a veth on the LAN
 
 ```
-/interface/veth/add name=veth-print address=192.168.252.PRINT/24 gateway=192.168.252.1 comment="printserver"
+/interface/veth/add name=veth-print address=192.0.2.PRINT/24 gateway=192.0.2.1 comment="printserver"
 /interface/bridge/port/add bridge=bridgeLocal interface=veth-print pvid=1 comment="printserver"
 ```
 
-`bridgeLocal` filters VLANs, so `pvid=1` puts the container untagged on the
-LAN, like `ether2`–`ether5`. No firewall or NAT rule is needed: it is a host on
+This assumes the LAN bridge is `bridgeLocal` (use yours) and that it filters
+VLANs with the LAN untagged as VLAN 1, so `pvid=1` puts the container on the
+LAN like any wired port. No firewall or NAT rule is needed: it is a host on
 the LAN.
 
 **Check:** `/interface/bridge/vlan/print` lists `veth-print` as untagged on
@@ -54,13 +57,13 @@ VLAN 1 (the dynamic "added by pvid" row).
 /container/config/set registry-url=https://ghcr.io tmpdir=usb1-part1/printserver/tmp
 /container/envs/add list=printserver key=PRINTSERVER_DEVICE value=test
 /container/envs/add list=printserver key=PRINTSERVER_HOSTNAME value=printserver
-/container/envs/add list=printserver key=TZ value=America/Chicago
+/container/envs/add list=printserver key=TZ value=Etc/UTC
 /container/mounts/add list=printserver src=usb1-part1/printserver/data dst=/data
 ```
 
 `TZ` sets the time shown on scans and jobs; use your own zone.
 
-Optional, if you give it a DNS name (for example an Unbound host override
+Optional, if you give it a DNS name (for example a DNS host override
 `print.example.com` → the container's address):
 
 ```
@@ -78,7 +81,7 @@ addresses and `printserver.local` always work. For more names, add
 ```
 /container/add remote-image=jasonthagerty/printserver:latest interface=veth-print \
   root-dir=usb1-part1/printserver/root envlist=printserver mountlists=printserver \
-  hostname=printserver dns=192.168.252.1 start-on-boot=yes logging=yes \
+  hostname=printserver dns=192.0.2.1 start-on-boot=yes logging=yes \
   memory-max=512M name=printserver comment="printserver"
 /container/print
 ```
@@ -102,15 +105,15 @@ step 4.
 
 ## 5. Verify from the house
 
-- `http://192.168.252.PRINT/` and `http://printserver.local/` open the web UI.
+- `http://192.0.2.PRINT/` and `http://printserver.local/` open the web UI.
   The home screen says **Test mode**.
-- From blackbox: `avahi-browse -rt _ipp._tcp` shows **Canon MG3620 @
+- From a Linux computer on the LAN: `avahi-browse -rt _ipp._tcp` shows **Canon MG3620 @
   printserver**, and `avahi-browse -rt _uscan._tcp` shows the scanner.
 - On an iPhone: Share, Print. **Canon MG3620** is listed. Printing a page
   completes (the output goes to a file in test mode).
 - On a Mac: Preview, File, Import from Scanner lists the test scanner.
-- From a device on Media or Automation: the printer is listed too (the
-  firewall's mDNS repeater forwards it).
+- From a device on another network that your firewall's mDNS repeater (if
+  any) covers: the printer is listed too.
 
 ## Health check
 

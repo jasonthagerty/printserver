@@ -1,15 +1,15 @@
 # Switch to the real printer over USB
 
-Prerequisite: [deploy-ap2.md](deploy-ap2.md) works in test mode.
+Prerequisite: [deploy-routeros.md](deploy-routeros.md) works in test mode.
 
 RouterOS 7.20 added `devices=` to pass hardware from `/system/resource/hardware`
-into a container. MikroTik documents it with a serial port only; on AP2
-(RouterOS 7.25.1) it works for the MG3620 as below. If it ever does not, see
+into a container. MikroTik documents it with a serial port only; on a
+hAP be³ Media (RouterOS 7.25.1) it works for the MG3620 as below. If it ever does not, see
 **Fallback** at the end.
 
 ## 1. Plug in and find the printer
 
-Connect the MG3620's USB-B port to one of AP2's USB-A ports and switch the
+Connect the MG3620's USB-B port to one of the router's USB-A ports and switch the
 printer on. Then:
 
 ```
@@ -72,7 +72,7 @@ with its power button whenever you like: switched off that way, it stays on
 the USB bus with the same device number, so the container keeps working, and
 the next job wakes it.
 
-Tested on AP2: with the printer off, a print from an iPhone woke it and
+Tested on a hAP be³ Media: with the printer off, a print from an iPhone woke it and
 printed. Avoid switching it off at the wall or with a smart plug: that skips
 capping the print head, and the printer likely comes back with a new USB device
 number, which needs a container restart.
@@ -108,7 +108,7 @@ container's device nodes): "off or unplugged" or "reconnected ... restart".
 
 ## Fallback: print over the printer's Wi-Fi
 
-If USB passthrough does not work, keep the printer's Wi-Fi on, give it a Kea
+If USB passthrough does not work, keep the printer's Wi-Fi on, give it a DHCP
 reservation, and point the queue at it instead:
 
 - Printing: `PRINTSERVER_DEVICE=usb` still applies the right driver; set the

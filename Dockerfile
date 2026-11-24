@@ -102,7 +102,7 @@ ENV S6_KEEP_ENV=1 \
 
 EXPOSE 80 631 8090
 # Docker uses this; RouterOS takes the same command as healthcheck-cmd
-# (docs/runbooks/deploy-ap2.md).
+# (docs/runbooks/deploy-routeros.md).
 HEALTHCHECK --interval=1m --timeout=10s --start-period=2m --retries=3 \
   CMD ["/usr/local/bin/printserver", "healthcheck"]
 ENTRYPOINT ["/init"]

@@ -81,7 +81,7 @@ func TestProxyChecksHostAndOrigin(t *testing.T) {
 	if code := get("printserver.local:8090", nil, http.MethodGet); code != http.StatusOK {
 		t.Errorf("own name: %d", code)
 	}
-	if code := get("192.168.1.9:8090", nil, http.MethodGet); code != http.StatusOK {
+	if code := get("192.0.2.9:8090", nil, http.MethodGet); code != http.StatusOK {
 		t.Errorf("IP address: %d", code)
 	}
 	if code := get("rebound.example:8090", nil, http.MethodGet); code != http.StatusMisdirectedRequest {
