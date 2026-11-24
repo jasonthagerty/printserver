@@ -21,7 +21,10 @@ func TestPage(at time.Time) []byte {
 	}
 	text(72, 720, 24, "Printer test page")
 	text(72, 696, 11, "Printed "+at.Format("Monday, January 2, 2006 at 3:04 PM")+" by printserver.")
-	text(72, 680, 11, "Every bar should be solid. Streaks or gaps mean a clogged nozzle: use Clean print head on the home screen.")
+	// Keep every line inside a 1-inch margin: drivers that print at 1:1
+	// (IVEC) clip what Gutenprint's fit-to-margins shrank into view.
+	text(72, 680, 11, "Every bar should be solid.")
+	text(72, 666, 11, "Streaks or gaps mean a clogged nozzle: use Clean print head on the home screen.")
 	bars := []struct {
 		label   string
 		r, g, b float64
