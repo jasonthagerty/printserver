@@ -41,7 +41,23 @@ RUN git clone --depth 1 --branch "$AIRSANE_VERSION" https://github.com/SimulPisc
     && install -m 0644 /src/etc/Gnome-scanner.png /out/etc/airsane/ \
     && printf 'icon Gnome-scanner.png\n' >/out/etc/airsane/options.conf
 
-# Stage 4: runtime.
+# Stage 4: the open Canon IVEC driver (GPL-3.0), which sends pages as sRGB
+# PWG raster so the printer does its own color, as Canon's driver does.
+# Selected with PRINTSERVER_DRIVER=ivec; Gutenprint remains the default.
+FROM debian:trixie-slim AS ivec
+ARG IVEC_COMMIT=55c8322936569f2b2f57db357d95ad934453d73b
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates git make gcc libc6-dev pkg-config libcups2-dev libusb-1.0-0-dev python3 \
+    && rm -rf /var/lib/apt/lists/*
+RUN git clone https://github.com/noble6/canon-universal-driver.git /src \
+    && git -C /src checkout --quiet "$IVEC_COMMIT" \
+    && make -C /src out/rastertocanonivec out/cmdtocanonivec out/ppd/.stamp \
+    && install -D -m 0755 /src/out/rastertocanonivec /out/usr/lib/cups/filter/rastertocanonivec \
+    && install -D -m 0755 /src/out/cmdtocanonivec /out/usr/lib/cups/filter/cmdtocanonivec \
+    && install -D -m 0644 "/src/out/ppd/Canon-MG3600_series-ivec.ppd" /out/usr/share/ppd/canon-ivec/Canon-MG3600_series-ivec.ppd \
+    && install -D -m 0644 /src/LICENSE /out/usr/share/doc/canon-ivec-driver/LICENSE
+
+# Stage 5: runtime.
 FROM debian:trixie-slim
 ARG TARGETARCH
 ARG VERSION=dev
@@ -66,6 +82,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get purge -y --auto-remove curl xz-utils \
     && rm -rf /var/lib/apt/lists/* /etc/cups/printers.conf /etc/cups/ppd
 COPY --from=airsane /out/ /
+COPY --from=ivec /out/ /
 COPY --from=build /printserver /usr/local/bin/printserver
 COPY image/rootfs/ /
 RUN ldd /usr/local/bin/airsaned | { ! grep 'not found'; }

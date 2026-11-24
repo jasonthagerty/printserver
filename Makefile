@@ -64,9 +64,11 @@ verify-openapi: openapi
 image:
 	docker buildx build --load --build-arg VERSION=$(VERSION) -t $(IMAGE) .
 
-# Runs the image in test mode and checks printing, scanning and discovery.
+# Runs the image in test mode and checks printing, scanning and discovery,
+# with each driver.
 smoke: image
-	test/smoke/run.sh $(IMAGE)
+	test/smoke/run.sh $(IMAGE) gutenprint
+	test/smoke/run.sh $(IMAGE) ivec
 
 clean:
 	rm -f printserver

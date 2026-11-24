@@ -31,8 +31,20 @@ case "$PRINTSERVER_DEVICE" in
     ;;
 esac
 
-lpadmin -p "$queue" -E -v "$uri" \
-  -m "${PRINTSERVER_PPD:-gutenprint.5.3://bjc-PIXMA-MG3620/expert}" \
+# The driver: Gutenprint by default, or the open Canon IVEC driver, which
+# hands the printer sRGB pages so it does its own color (and ends jobs the
+# way Canon's driver does). PRINTSERVER_PPD overrides either.
+case "${PRINTSERVER_DRIVER:-gutenprint}" in
+  gutenprint) model="-m ${PRINTSERVER_PPD:-gutenprint.5.3://bjc-PIXMA-MG3620/expert}" ;;
+  ivec) model="-P ${PRINTSERVER_PPD:-/usr/share/ppd/canon-ivec/Canon-MG3600_series-ivec.ppd}" ;;
+  *)
+    echo "cups-queue: PRINTSERVER_DRIVER must be gutenprint or ivec" >&2
+    exit 1
+    ;;
+esac
+
+# $model is two words on purpose
+lpadmin -p "$queue" -E -v "$uri" $model \
   -D "${PRINTSERVER_PRINTER_INFO:-Canon MG3620}" \
   -L "${PRINTSERVER_LOCATION:-}" \
   -o printer-is-shared=true \
@@ -49,4 +61,4 @@ done
 lpadmin -d "$queue"
 cupsenable "$queue"
 cupsaccept "$queue"
-echo "cups-queue: $queue -> $uri"
+echo "cups-queue: $queue -> $uri (driver ${PRINTSERVER_DRIVER:-gutenprint})"
