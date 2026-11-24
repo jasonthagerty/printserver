@@ -59,8 +59,9 @@ exit
   **Canon PIXMA MG3600 Series**.
 - Print a page from an iPhone and from the web UI.
 - Scan a page from the web UI, and from Preview on a Mac.
-- Check ink levels on the home screen. Gutenprint often reports none over USB;
-  the screen then shows no gauges rather than made-up ones.
+- Check ink levels on the home screen. Neither driver reads them over USB, so
+  the screen shows no gauges rather than made-up ones until the printer's
+  Wi-Fi is set up for them ([ink-over-wifi.md](ink-over-wifi.md)).
 
 ## 4. Let the printer turn itself on
 

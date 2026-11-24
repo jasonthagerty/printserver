@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-# printserver: CUPS + Gutenprint + SANE/AirSane + Avahi + the web UI, under s6.
+# printserver: CUPS + the Canon IVEC driver + SANE/AirSane + Avahi + the web UI, under s6.
 
 # Stage 1: GUI. Its output is architecture-independent, so build it natively.
 FROM --platform=$BUILDPLATFORM node:24-trixie-slim AS frontend
@@ -43,7 +43,7 @@ RUN git clone --depth 1 --branch "$AIRSANE_VERSION" https://github.com/SimulPisc
 
 # Stage 4: the open Canon IVEC driver (GPL-3.0), which sends pages as sRGB
 # PWG raster so the printer does its own color, as Canon's driver does.
-# Selected with PRINTSERVER_DRIVER=ivec; Gutenprint remains the default.
+# The default; PRINTSERVER_DRIVER=gutenprint selects Gutenprint instead.
 FROM debian:trixie-slim AS ivec
 ARG IVEC_COMMIT=55c8322936569f2b2f57db357d95ad934453d73b
 RUN apt-get update && apt-get install -y --no-install-recommends \

@@ -13,7 +13,7 @@ Built for a Canon PIXMA MG3620 on a MikroTik hAP be³ Media (arm64, RouterOS
 
 | Part | Does |
 |---|---|
-| CUPS + a driver | The print queue, shared over IPP, so iPhones (AirPrint), Android (Mopria), Macs and Windows print natively. Two drivers: Gutenprint (default), or the open [Canon IVEC driver](https://github.com/noble6/canon-universal-driver) (GPL-3.0), which sends the printer sRGB pages so it does its own color, as Canon's own driver does. |
+| CUPS + a driver | The print queue, shared over IPP, so iPhones (AirPrint), Android (Mopria), Macs and Windows print natively. Two drivers: the open [Canon IVEC driver](https://github.com/noble6/canon-universal-driver) (GPL-3.0, default), which sends the printer sRGB pages so it does its own color, as Canon's own driver does; or Gutenprint, whose colors print dark and which makes the MG3620 feed a blank sheet after every job. |
 | SANE + [AirSane](https://github.com/SimulPiscator/AirSane) | The scanner, as eSCL (AirScan) for Image Capture, Preview, iPhones and Windows. AirSane listens on loopback only; the Go server serves port 8090 for it. |
 | Avahi | Announces the printer and scanner on the network (mDNS). The Go server writes both records, so their "webpage" links point at the web UI rather than CUPS's or AirSane's. |
 | `printserver` (Go) | The web UI and its JSON API on port 80: print uploads, the queue, scanning (multi-page PDF), copying, sending scans to Nextcloud, cartridge ages and ink levels with a test page reminder (ink dries in a printer that sits), and Canon's nozzle check and print head cleaning. Also the eSCL proxy on port 8090 and its mDNS record. |
@@ -51,10 +51,10 @@ RouterOS's `/container/add file=`.
 | `PRINTSERVER_QUEUE` | `MG3620` | CUPS queue name |
 | `PRINTSERVER_PRINTER_INFO` | `Canon MG3620` | Name phones show |
 | `PRINTSERVER_LOCATION` | empty | Location phones show |
-| `PRINTSERVER_DRIVER` | `gutenprint` | `gutenprint` or `ivec` |
+| `PRINTSERVER_DRIVER` | `ivec` | `ivec` or `gutenprint` |
 | `PRINTSERVER_PPD` | the MG3620's, per driver | Driver for another printer |
 | `PRINTSERVER_PAGE_SIZE` | `Letter` | Default paper |
-| `PRINTSERVER_PRINTER_OPTIONS` | empty | Driver settings for every job, space-separated, e.g. `StpBrightness=1300` for Gutenprint (see `lpoptions -p MG3620 -l`; try them with `printserver test-page \| lp -d MG3620 -o ...`) |
+| `PRINTSERVER_PRINTER_OPTIONS` | empty | Driver settings for every job, space-separated, e.g. `StpBrightness=1300` for Gutenprint, which lightens its dark colors (see `lpoptions -p MG3620 -l`; try them with `printserver test-page \| lp -d MG3620 -o ...`) |
 | `PRINTSERVER_PUBLIC_URL` | `http://printserver.local/` | The web UI's address: linked as the printer's and scanner's webpage, shown in Settings, and accepted by the Host checks |
 | `PRINTSERVER_INK_URI` | empty | The printer's own IPP address over Wi-Fi, polled for ink levels (see [the runbook](docs/runbooks/ink-over-wifi.md)); printing stays on USB |
 | `PRINTSERVER_INK_INTERVAL` | `6h` | How often to read ink levels |

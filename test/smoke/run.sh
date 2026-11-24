@@ -2,11 +2,14 @@
 # Smoke test of the real image in test mode: runs it on an isolated Docker
 # network and checks, from a separate client container, what an iPhone or a
 # browser on the LAN would rely on. Usage: test/smoke/run.sh [image] [driver]
-# where driver is gutenprint (default) or ivec.
+# where driver is ivec or gutenprint; without one the image's default (ivec)
+# must be the one that runs.
 set -eu
 
 image="${1:-printserver:dev}"
-driver="${2:-gutenprint}"
+driver="${2:-}"
+driver_env=""
+[ -n "$driver" ] && driver_env="-e PRINTSERVER_DRIVER=$driver"
 net="printserver-smoke-$$"
 name="printserver-smoke-$$"
 out="$(mktemp -d)"
@@ -29,7 +32,8 @@ docker network create "$net" >/dev/null
 docker run -d --name "$name" --network "$net" --hostname printserver \
   -e PRINTSERVER_PUBLIC_URL=http://print.example.com/ \
   -e PRINTSERVER_JOB_RETRY_INTERVAL=5 -e PRINTSERVER_JOB_RETRY_LIMIT=3 \
-  -e PRINTSERVER_DRIVER="$driver" "$image" >/dev/null
+  $driver_env "$image" >/dev/null
+driver="${driver:-ivec}"
 echo "driver: $driver"
 
 docker run --rm --network "$net" -v "$out:/out" printserver-smoke-client sh -eu -c '
@@ -143,6 +147,8 @@ docker exec "$name" grep -q "BJLSTART" /data/test-output/last-job.prn &&
 echo "ok   maintenance job reached the printer byte for byte"
 out="$(docker exec "$name" printserver healthcheck)" || { echo "FAIL: healthcheck: $out" >&2; exit 1; }
 echo "ok   healthcheck: $out"
+docker logs "$name" 2>&1 | grep -q "cups-queue: MG3620 -> .* (driver $driver)" ||
+  { echo "FAIL: the queue was not set up with the $driver driver" >&2; exit 1; }
 echo "ok   printer output written by the $driver driver"
 docker exec "$name" sh -eu -c '
 fail() { echo "FAIL: $*" >&2; exit 1; }
