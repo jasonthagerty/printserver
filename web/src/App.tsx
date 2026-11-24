@@ -101,7 +101,7 @@ function Page({ route }: { route: Route }) {
     case "file":
       return <FileDetail id={route.id} />;
     case "settings":
-      return <Settings />;
+      return <Settings section={route.section} />;
     default:
       return <Home />;
   }

@@ -1,14 +1,23 @@
 import { useEffect, useState } from "react";
 
-// A tiny history-API router: five top-level pages and scan details are all
-// the GUI needs.
+// A tiny history-API router: five top-level pages, scan details and the
+// settings sections are all the GUI needs.
+export const settingsSections = [
+  "ink",
+  "print-head",
+  "nextcloud",
+  "scans",
+  "devices",
+] as const;
+export type SettingsSection = (typeof settingsSections)[number];
+
 export type Route =
   | { page: "home" }
   | { page: "print" }
   | { page: "scan" }
   | { page: "files" }
   | { page: "file"; id: string }
-  | { page: "settings" };
+  | { page: "settings"; section?: SettingsSection };
 
 export function parse(path: string): Route {
   const p = path.replace(/\/+$/, "") || "/";
@@ -16,6 +25,9 @@ export function parse(path: string): Route {
   if (p === "/scan") return { page: "scan" };
   if (p === "/files") return { page: "files" };
   if (p === "/settings") return { page: "settings" };
+  const section = /^\/settings\/([a-z-]+)$/.exec(p)?.[1];
+  const known = settingsSections.find((s) => s === section);
+  if (known) return { page: "settings", section: known };
   const m = /^\/files\/([0-9]{8}-[0-9]{6}-[0-9a-f]{6})$/.exec(p);
   if (m?.[1]) return { page: "file", id: m[1] };
   return { page: "home" };
@@ -27,6 +39,8 @@ export function href(r: Route): string {
       return "/";
     case "file":
       return `/files/${r.id}`;
+    case "settings":
+      return r.section ? `/settings/${r.section}` : "/settings";
     default:
       return `/${r.page}`;
   }

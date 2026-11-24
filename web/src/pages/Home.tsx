@@ -10,8 +10,8 @@ import {
   cx,
   timeAgo,
 } from "../components/ui";
-import { Cartridges } from "../components/Cartridges";
-import { useJobs, useStatus } from "../queries";
+import { InkSummary } from "../components/Cartridges";
+import { useJobs, useStatus, useSupplies } from "../queries";
 import { link } from "../router";
 
 export function Home() {
@@ -47,7 +47,6 @@ export function Home() {
       </div>
 
       <Queue active={jobs.data?.active} loading={jobs.isPending} />
-      <Cartridges />
       {!!jobs.data?.recent.length && <Recent jobs={jobs.data.recent} />}
     </div>
   );
@@ -71,6 +70,10 @@ function stateLabel(p: PrinterStatus) {
 function PrinterCard({ status }: { status: Status }) {
   const p = status.printer;
   const scanner = status.scanner;
+  // The queue's own markers, for a driver that reports them; the cartridge
+  // levels read from the printer take their place when there are any.
+  const supplies = useSupplies();
+  const cartridgeLevels = supplies.data?.cartridges.some((c) => c.level >= 0);
   return (
     <Card>
       {status.mode === "test" && (
@@ -110,13 +113,14 @@ function PrinterCard({ status }: { status: Status }) {
         </ul>
       )}
 
-      {p && p.markers.length > 0 && (
+      {p && p.markers.length > 0 && !cartridgeLevels && (
         <div className="mt-5 space-y-3">
           {p.markers.map((m) => (
             <Ink key={m.name} name={m.name} color={m.color} level={m.level} />
           ))}
         </div>
       )}
+      <InkSummary />
     </Card>
   );
 }
@@ -291,7 +295,7 @@ function Recent({ jobs }: { jobs: Job[] }) {
     <Card>
       <SectionTitle>Recent</SectionTitle>
       <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-        {jobs.slice(0, 5).map((j) => (
+        {jobs.slice(0, 3).map((j) => (
           <li
             key={j.id}
             className="flex items-center justify-between gap-3 py-2.5"

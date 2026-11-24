@@ -2,11 +2,34 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { api, type Supplies } from "../api/client";
 import { useSupplies } from "../queries";
-import { Banner, Button, Card, SectionTitle, cx, timeAgo } from "./ui";
+import { link } from "../router";
+import { ChevronRightIcon } from "./icons";
+import { Banner, Button, Card, cx, timeAgo } from "./ui";
 
-// Cartridge ages and how long the printer has sat unused: on an inkjet
-// that prints rarely, both predict dried-out ink better than ink levels.
-export function Cartridges() {
+// Cartridge ages and ink levels: on an inkjet that prints rarely, age
+// predicts dried-out ink better than the level does.
+export function CartridgeList() {
+  const supplies = useSupplies();
+  const s = supplies.data;
+  if (!s) return null;
+  return (
+    <Card>
+      <ul className="space-y-4">
+        {s.cartridges.map((c) => (
+          <CartridgeRow key={c.id} cartridge={c} warnMonths={s.warn_months} />
+        ))}
+      </ul>
+      {s.ink_checked && (
+        <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+          Ink levels from the printer, checked {timeAgo(s.ink_checked)}.
+        </p>
+      )}
+    </Card>
+  );
+}
+
+// The page that keeps nozzles from drying, and Canon's own maintenance.
+export function PrintHeadCard() {
   const supplies = useSupplies();
   const qc = useQueryClient();
   const testPage = useMutation({
@@ -18,48 +41,119 @@ export function Cartridges() {
 
   return (
     <Card>
-      <SectionTitle>Ink cartridges</SectionTitle>
-      <ul className="space-y-4">
-        {s.cartridges.map((c) => (
-          <CartridgeRow key={c.id} cartridge={c} warnMonths={s.warn_months} />
-        ))}
-      </ul>
-      {s.ink_checked && (
-        <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-          Ink levels from the printer, checked {timeAgo(s.ink_checked)}.
-        </p>
+      <p className="text-slate-600 dark:text-slate-300">{lastPrinted(s)}</p>
+      {s.nudge && (
+        <div className="mt-3">
+          <Banner tone="warning">
+            Printing a page now and then keeps the ink from drying in the
+            nozzles.
+          </Banner>
+        </div>
       )}
-      <div className="mt-5 border-t border-slate-100 pt-4 dark:border-slate-800">
-        <p className="text-slate-600 dark:text-slate-300">{lastPrinted(s)}</p>
-        {s.nudge && (
-          <div className="mt-3">
-            <Banner tone="warning">
-              Printing a page now and then keeps the ink from drying in the
-              nozzles.
-            </Banner>
-          </div>
-        )}
-        {testPage.isSuccess ? (
-          <p className="mt-3 text-sm font-medium text-emerald-700 dark:text-emerald-300">
-            Test page sent. Every color bar should be solid.
-          </p>
-        ) : (
-          <Button
-            className={cx("mt-3 w-full", !s.nudge && "min-h-11 text-sm")}
-            variant={s.nudge ? "primary" : "secondary"}
-            busy={testPage.isPending}
-            onClick={() => testPage.mutate()}
-          >
-            Print a test page
-          </Button>
-        )}
-        {testPage.error && (
-          <p className="mt-2 text-sm text-rose-600">{testPage.error.message}</p>
-        )}
-      </div>
+      {testPage.isSuccess ? (
+        <p className="mt-3 text-sm font-medium text-emerald-700 dark:text-emerald-300">
+          Test page sent. Every color bar should be solid.
+        </p>
+      ) : (
+        <Button
+          className={cx("mt-3 w-full", !s.nudge && "min-h-11 text-sm")}
+          variant={s.nudge ? "primary" : "secondary"}
+          busy={testPage.isPending}
+          onClick={() => testPage.mutate()}
+        >
+          Print a test page
+        </Button>
+      )}
+      {testPage.error && (
+        <p className="mt-2 text-sm text-rose-600">{testPage.error.message}</p>
+      )}
       <PrintHead />
     </Card>
   );
+}
+
+// One line for the home screen: each cartridge's level, and the one thing
+// that needs doing, if any. Tapping it opens the details.
+export function InkSummary() {
+  const supplies = useSupplies();
+  const s = supplies.data;
+  if (!s) return null;
+  const low = s.cartridges.find((c) => c.low);
+  const old = s.cartridges.find((c) => c.old);
+  const attention = low
+    ? `${low.name} ink is low: get a replacement`
+    : old
+      ? `${old.name} cartridge is over ${s.warn_months} months old`
+      : s.nudge
+        ? `${lastPrinted(s)} Print a test page to keep the ink flowing.`
+        : "";
+  const to =
+    !low && !old && s.nudge
+      ? ({ page: "settings", section: "print-head" } as const)
+      : ({ page: "settings", section: "ink" } as const);
+  return (
+    <a
+      {...link(to)}
+      className="-mx-2 mt-4 flex items-center gap-3 rounded-2xl border-t border-slate-100 px-2 pt-4 dark:border-slate-800"
+    >
+      <div className="min-w-0 flex-1">
+        <ul className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
+          {s.cartridges.map((c) => (
+            <li key={c.id} className="flex items-center gap-2">
+              <span className="font-medium">{c.name}</span>
+              {c.level >= 0 ? (
+                <>
+                  <MiniBar level={c.level} color={c.color} />
+                  <span
+                    className={cx(
+                      "tabular-nums",
+                      c.low
+                        ? "font-semibold text-rose-700 dark:text-rose-300"
+                        : "text-slate-500 dark:text-slate-400",
+                    )}
+                  >
+                    {c.level}%
+                  </span>
+                </>
+              ) : (
+                <span className="text-slate-500 dark:text-slate-400">
+                  level unknown
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+        {attention && (
+          <p className="mt-1 text-sm font-medium text-amber-700 dark:text-amber-300">
+            {attention}
+          </p>
+        )}
+      </div>
+      <ChevronRightIcon className="size-5 shrink-0 text-slate-400" />
+    </a>
+  );
+}
+
+function MiniBar({ level, color }: { level: number; color: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="h-1.5 w-12 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
+    >
+      <span
+        className="block h-full rounded-full"
+        style={{ width: `${level}%`, background: inkBackground(color) }}
+      />
+    </span>
+  );
+}
+
+// Tri-color cartridges report one color per ink (#39D2E7#D945DD#DFD31D).
+function inkBackground(color: string) {
+  const colors = color.match(/#[0-9a-fA-F]{6}/g) ?? ["#64748b"];
+  return colors.length > 1
+    ? `linear-gradient(90deg, ${colors.join(", ")})`
+    : colors[0];
 }
 
 // Canon's own maintenance: the nozzle check shows which inks are streaky,
@@ -134,7 +228,7 @@ function PrintHead() {
   );
 }
 
-function lastPrinted(s: Supplies) {
+export function lastPrinted(s: Supplies) {
   if (s.idle_days < 0 || !s.last_printed) return "No prints recorded yet.";
   if (s.idle_days === 0) return "Last printed today.";
   if (s.idle_days === 1) return "Last printed yesterday.";
@@ -159,12 +253,7 @@ function LevelBar({
   low: boolean;
   color: string;
 }) {
-  // Tri-color cartridges report one color per ink (#39D2E7#D945DD#DFD31D).
-  const colors = color.match(/#[0-9a-fA-F]{6}/g) ?? ["#64748b"];
-  const bg =
-    colors.length > 1
-      ? `linear-gradient(90deg, ${colors.join(", ")})`
-      : colors[0];
+  const bg = inkBackground(color);
   return (
     <div className="mt-2">
       <div className="flex justify-between text-sm">

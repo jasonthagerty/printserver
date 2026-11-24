@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "./App";
 import { href, parse } from "./router";
@@ -177,10 +177,13 @@ test("routes round-trip", () => {
     "/scan",
     "/files",
     "/settings",
+    "/settings/ink",
+    "/settings/print-head",
     "/files/20261122-101010-abcdef",
   ]) {
     expect(href(parse(p))).toBe(p);
   }
+  expect(parse("/settings/nope")).toEqual({ page: "home" });
   expect(parse("/files/../../etc")).toEqual({ page: "home" });
   expect(parse("/print/")).toEqual({ page: "print" });
 });
@@ -190,7 +193,15 @@ test("home shows state, problems, ink and the queue, and cancels a job", async (
   renderAt("/");
   expect(await screen.findByText("Needs attention")).toBeInTheDocument();
   expect(screen.getByText("Out of paper. Load paper.")).toBeInTheDocument();
-  expect(screen.getByText("40%")).toBeInTheDocument();
+  // The cartridge levels read from the printer replace the queue's markers.
+  expect(await screen.findByText("12%")).toBeInTheDocument();
+  expect(screen.queryByText("40%")).not.toBeInTheDocument();
+  expect(
+    screen.getByText("Black ink is low: get a replacement"),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("link", { name: /Black ink is low/ }),
+  ).toHaveAttribute("href", "/settings/ink");
   expect(await screen.findByText("report.pdf")).toBeInTheDocument();
 
   await userEvent.click(
@@ -230,7 +241,7 @@ test("print needs a file, and offers the printer's options", async () => {
 
 test("settings never shows the saved password and keeps it on save", async () => {
   const calls = mockAPI();
-  renderAt("/settings");
+  renderAt("/settings/nextcloud");
   const pw = (await screen.findByLabelText("App password")) as HTMLInputElement;
   expect(pw.value).toBe("");
   expect(pw.placeholder).toMatch(/Saved/);
@@ -252,9 +263,47 @@ test("scan page lists the scanner's resolutions", async () => {
   expect(screen.getByRole("button", { name: /^Scan$/ })).toBeEnabled();
 });
 
-test("home shows cartridge ages, the idle reminder, and prints a test page", async () => {
+test("keeping scans saves the retention and keeps the Nextcloud password", async () => {
   const calls = mockAPI();
-  renderAt("/");
+  renderAt("/settings/scans");
+  const days = await screen.findByLabelText(/Keep scans for/);
+  await userEvent.clear(days);
+  await userEvent.type(days, "14");
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(calls.some((c) => c.method === "PUT")).toBe(true));
+  expect(calls.find((c) => c.method === "PUT")?.body).toEqual({
+    retention_days: 14,
+    nextcloud: {
+      url: "https://cloud.example.com",
+      user: "me",
+      folder: "Scans",
+      password: "",
+    },
+  });
+});
+
+test("settings is a menu of short pages", async () => {
+  mockAPI();
+  renderAt("/settings");
+  expect(
+    await screen.findByText("A cartridge needs attention"),
+  ).toBeInTheDocument();
+  expect(await screen.findByText("me, folder Scans")).toBeInTheDocument();
+  expect(screen.getByText("30 days")).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("link", { name: /Print head/ }));
+  expect(location.pathname).toBe("/settings/print-head");
+  expect(
+    await screen.findByRole("button", { name: "Nozzle check" }),
+  ).toBeInTheDocument();
+  await userEvent.click(
+    within(screen.getByRole("main")).getByRole("link", { name: "Settings" }),
+  );
+  expect(location.pathname).toBe("/settings");
+});
+
+test("the ink page shows cartridge ages and levels", async () => {
+  mockAPI();
+  renderAt("/settings/ink");
   expect(
     await screen.findByText(/over 6 months: it may be drying out/),
   ).toBeInTheDocument();
@@ -262,7 +311,17 @@ test("home shows cartridge ages, the idle reminder, and prints a test page", asy
   expect(screen.getByText("Low: get a replacement")).toBeInTheDocument();
   expect(screen.getByText("12%")).toBeInTheDocument();
   expect(screen.getByText(/checked just now/)).toBeInTheDocument();
-  expect(screen.getByText("Last printed 30 days ago.")).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "Save reminders" }),
+  ).toBeInTheDocument();
+});
+
+test("the print head page shows the idle reminder and prints a test page", async () => {
+  const calls = mockAPI();
+  renderAt("/settings/print-head");
+  expect(
+    await screen.findByText("Last printed 30 days ago."),
+  ).toBeInTheDocument();
   await userEvent.click(
     screen.getByRole("button", { name: "Print a test page" }),
   );
@@ -277,7 +336,7 @@ test("home shows cartridge ages, the idle reminder, and prints a test page", asy
 test("maintenance buttons confirm before sending", async () => {
   const calls = mockAPI();
   const confirmSpy = vi.spyOn(window, "confirm");
-  renderAt("/");
+  renderAt("/settings/print-head");
   const clean = await screen.findByRole("button", { name: "Clean print head" });
 
   confirmSpy.mockReturnValueOnce(false);
